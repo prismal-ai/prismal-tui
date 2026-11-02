@@ -1,0 +1,95 @@
+# TUI-04-06 — on a `v*` tag: gate, build, smoke-test and attach the wheel and
+# sdist to a GitHub Release. No PyPI upload: v0.1 installs from source
+# (TUI-FUTURE-01), and prismal-sdk 0.2 is not on PyPI yet, so it is checked
+# out next to this repo exactly as in ci.yml.
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the GitHub Release
+    defaults:
+      run:
+        working-directory: prismal-tui
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          path: prismal-tui
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: prismal-ai/prismal-sdk
+          path: prismal-sdk
+          persist-credentials: false
+          token: ${{ secrets.PRISMAL_SDK_TOKEN || github.token }}
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          python-version: "3.13"
+
+      # A tag that disagrees with pyproject.toml would release a version
+      # nobody asked for. Fail before building anything.
+      - name: Verify the tag matches the project version
+        run: |
+          set -euo pipefail
+          tag_version="${GITHUB_REF_NAME#v}"
+          project_version="$(uv version --short)"
+          if [ "$tag_version" != "$project_version" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match project version ${project_version}"
+            exit 1
+          fi
+          grep -q "^## \[${project_version}\]" CHANGELOG.md \
+            || { echo "::error::CHANGELOG.md has no [${project_version}] entry"; exit 1; }
+
+      - name: Install
+        run: uv sync --locked --extra dev
+      - name: Ruff
+        run: uv run ruff check . && uv run ruff format --check .
+      - name: Mypy
+        run: uv run mypy prismal_tui
+      - name: Pytest (unit + ui, offline) + coverage floor
+        run: uv run pytest --cov --cov-report=term-missing
+
+      - name: Build
+        run: uv build
+
+      # Catches what the suite cannot: files missing from the artifacts.
+      - name: Smoke test (wheel)
+        env:
+          EXPECTED_VERSION: ${{ github.ref_name }}
+        run: |
+          export EXPECTED_VERSION="${EXPECTED_VERSION#v}"
+          uv run --isolated --no-project --with dist/*.whl --with ../prismal-sdk scripts/smoke_test.py
+      - name: Smoke test (source distribution)
+        env:
+          EXPECTED_VERSION: ${{ github.ref_name }}
+        run: |
+          export EXPECTED_VERSION="${EXPECTED_VERSION#v}"
+          uv run --isolated --no-project --with dist/*.tar.gz --with ../prismal-sdk scripts/smoke_test.py
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          # Release notes = this version's CHANGELOG section.
+          awk -v v="$version" '
+            $0 ~ "^## \\[" v "\\]" { on = 1; next }
+            on && /^## \[/ { exit }
+            on && /^\[[^]]+\]: / { next }
+            on { print }
+          ' CHANGELOG.md > release-notes.md
+          gh release create "$TAG" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "prismal-tui $version" \
+            --notes-file release-notes.md

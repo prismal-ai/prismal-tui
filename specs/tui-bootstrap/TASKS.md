@@ -86,7 +86,7 @@ before the `v0.1.0` tag (TUI-04-06).
 | TUI-04-03 | Responsiveness check: app accepts input / redraws status bar while a turn streams (no event-loop blocking) — scripted slow-stream UI test | 0.4 d | 02-07 | NFR-004 | `DONE` |
 | TUI-04-04 | `docs/configuration.md` (`PRISMAL_TUI_*` reference) | 0.3 d | 00-03 | — | `DONE` |
 | TUI-04-05 | `ruff` + `mypy` clean; coverage baseline recorded (97.0%, `fail_under = 97` ratchet in `pyproject.toml`) | 0.3 d | all | NFR-002 | `DONE` |
-| TUI-04-06 | Tag `v0.1.0`; release workflow | 0.2 d | 04-01..05, D-01..09 | — | `TODO` |
+| TUI-04-06 | Tag `v0.1.0`; release workflow | 0.2 d | 04-01..05, D-01..09 | — | `DONE` |
 
 ## Future (out of scope for v0.1, tracked only)
 
@@ -131,7 +131,7 @@ Phase 0 → 1 → 2 → 3 → 4 (scaffold before session core before UI before
 polish before hardening); within Phase 2, the transcript (TUI-02-02/03)
 and the composer/sidebar (TUI-02-04/05) can proceed in parallel once
 TUI-02-01 (app skeleton) is `DONE`, since neither depends on the other.
-Phases 0–3 and TUI-04-01..05 are `DONE`; Phase D and TUI-04-06 (the `v0.1.0` tag, which waits for Phase D) are `TODO`.
+All phases (0–4 and D) are `DONE`; `v0.1.0` is tagged.
 
 ---
 
@@ -146,3 +146,4 @@ Phases 0–3 and TUI-04-01..05 are `DONE`; Phase D and TUI-04-06 (the `v0.1.0` t
 | 1.4 | 2026-11-02 | Ernesto Crespo | Phase 3 (error UX & polish) done; manual checklist run against host 0.2 fake mode |
 | 1.5 | 2026-11-02 | Ernesto Crespo | Phase 4 hardening (TUI-04-01..05) done; tag deferred until Phase D |
 | 1.6 | 2026-11-02 | Ernesto Crespo | Phase D (usage readout, `/usage`, budget copy; TUI-D-01..09) done; contract suite 8/8 vs host 0.2 fake mode |
+| 1.7 | 2026-11-02 | Ernesto Crespo | TUI-04-06 done: version 0.1.0, CHANGELOG, release workflow (tag → gates → build → smoke → GitHub Release); `v0.1.0` tagged |

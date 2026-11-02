@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "prismal-tui"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "Terminal UI (Textual) for prismal-server, built exclusively on prismal-sdk."
 readme = "README.md"
 requires-python = ">=3.13"

@@ -15,10 +15,11 @@ conversation), streams the reply through `prismal-sdk`, and renders it as
 Markdown in a scrollable transcript — with a single key press (`Esc` by
 default) to cancel mid-turn.
 
-> **Status: pre-release (`0.1.0.dev0`).** Phases TUI-00…04 and the usage
-> readout (Phase D, `DELTA-2026-10`) are implemented (see
-> [`specs/tui-bootstrap/TASKS.md`](./specs/tui-bootstrap/TASKS.md)); only the
-> `v0.1.0` tag and release workflow (TUI-04-06) remain.
+> **Status: `0.1.0`** — all of `tui-bootstrap` (phases TUI-00…04 and the
+> usage readout, `DELTA-2026-10`) is implemented; see
+> [`CHANGELOG.md`](./CHANGELOG.md) and
+> [`specs/tui-bootstrap/TASKS.md`](./specs/tui-bootstrap/TASKS.md). Installs
+> from source (not on PyPI yet).
 
 ## Ecosystem position
 
