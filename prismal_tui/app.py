@@ -10,6 +10,7 @@ automatically (SPEC-TUI-ERR-004).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any, Protocol
 from urllib.parse import urlsplit
@@ -97,6 +98,9 @@ class PrismalTuiApp(App[None]):
         self.store = store
         self.sessions = ConversationSessions(client, store)
         self.active_id: str | None = None
+        self._sidebar_lock = asyncio.Lock()
+        self._sidebar_dirty = False
+        self._sidebar_pending = False
         # SPEC-TUI-UX-002: the cancel key is configurable and must win over the
         # focused Input's own bindings, hence priority=True. It is only active
         # while the active conversation has a turn in flight (check_action).
@@ -190,10 +194,29 @@ class PrismalTuiApp(App[None]):
         await self._refresh_sidebar()
         self._sync_activity()
 
+    def _refresh_sidebar_later(self) -> None:
+        """Schedule a sidebar refresh from sync code; requests coalesce."""
+        self._sidebar_dirty = True
+        if not self._sidebar_pending:
+            self._sidebar_pending = True
+            self._sidebar_worker()
+
+    @work(group="sidebar")
+    async def _sidebar_worker(self) -> None:
+        try:
+            while self._sidebar_dirty:
+                self._sidebar_dirty = False
+                await self._refresh_sidebar()
+        finally:
+            self._sidebar_pending = False
+
     async def _refresh_sidebar(self) -> None:
-        await self.sidebar.show(
-            await self.store.list(), self.active_id, self.sessions.in_flight_ids()
-        )
+        # Serialized and never cancelled midway: overlapping or cancelled
+        # ListView clear()/extend() calls can wedge Textual's mount machinery.
+        async with self._sidebar_lock:
+            await self.sidebar.show(
+                await self.store.list(), self.active_id, self.sessions.in_flight_ids()
+            )
 
     def note(self, text: str) -> None:
         """Inline, friendly system line in the active transcript."""
@@ -278,7 +301,7 @@ class PrismalTuiApp(App[None]):
 
     def _turn_state_changed(self) -> None:
         self._sync_activity()
-        self.run_worker(self._refresh_sidebar(), group="sidebar", exclusive=True)
+        self._refresh_sidebar_later()
 
     # ── actions & commands ─────────────────────────────────────────────────
 

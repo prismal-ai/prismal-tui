@@ -434,3 +434,35 @@ async def test_unexpected_error_log_has_no_exception_message(
     assert "RuntimeError" in text
     assert "MY-PRIVATE-PROMPT" not in text
     assert "fakes.py" in text  # frame locations kept for debugging
+
+
+async def test_sidebar_refreshes_never_overlap(make_app: AppFactory) -> None:
+    """Regression: overlapping/cancelled ListView rebuilds wedged the app."""
+    app = make_app()
+    async with app.run_test() as pilot:
+        await settle(pilot)
+        active = 0
+        peak = 0
+        calls = 0
+        real_show = app.sidebar.show
+
+        async def tracked_show(*a: object, **kw: object) -> None:
+            nonlocal active, peak, calls
+            active += 1
+            calls += 1
+            peak = max(peak, active)
+            try:
+                await asyncio.sleep(0.01)
+                await real_show(*a, **kw)  # type: ignore[arg-type]
+            finally:
+                active -= 1
+
+        app.sidebar.show = tracked_show  # type: ignore[method-assign]
+        for _ in range(10):
+            app._refresh_sidebar_later()  # noqa: SLF001
+        await asyncio.gather(*(app._refresh_sidebar() for _ in range(3)))  # noqa: SLF001
+        await submit(pilot, "/new x")
+        await settle(pilot)
+        assert peak == 1
+        assert calls <= 6  # 10 deferred requests coalesced into at most two runs
+        assert app.sidebar.names[0] == "x"
