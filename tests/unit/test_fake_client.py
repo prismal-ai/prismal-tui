@@ -23,7 +23,14 @@ from tests.fakes import FakeAsyncPrismalClient, FakeTurn
 
 
 def test_fake_mirrors_the_real_client_signatures() -> None:
-    for name in ("healthz", "readyz", "create_thread", "send_message", "aclose"):
+    for name in (
+        "healthz",
+        "readyz",
+        "create_thread",
+        "send_message",
+        "usage",
+        "aclose",
+    ):
         real = inspect.signature(getattr(AsyncPrismalClient, name))
         fake = inspect.signature(getattr(FakeAsyncPrismalClient, name))
         real_params = [p for p in real.parameters if p != "self"]
@@ -138,3 +145,71 @@ def test_tmp_store_path_fixture_points_into_tmp(tmp_store_path: Path) -> None:
     assert tmp_store_path.name == "conversations.db"
     assert tmp_store_path.parent.is_dir()
     assert not tmp_store_path.exists()
+
+
+# ── TUI-D-02: usage scripts ────────────────────────────────────────────────
+
+
+async def test_text_turn_can_carry_done_usage() -> None:
+    from prismal_sdk import Usage
+
+    from tests.usage_payloads import FAKE_USAGE
+
+    usage = Usage(**FAKE_USAGE)
+    fake = FakeAsyncPrismalClient(turns=[FakeTurn.text("hi", usage=usage)])
+    events = [e async for e in fake.send_message("t", "q")]
+    assert isinstance(events[-1], DoneEvent) and events[-1].usage == usage
+
+
+async def test_text_turn_usage_defaults_to_none() -> None:
+    fake = FakeAsyncPrismalClient(turns=[FakeTurn.text("hi")])
+    events = [e async for e in fake.send_message("t", "q")]
+    assert isinstance(events[-1], DoneEvent) and events[-1].usage is None
+
+
+async def test_usage_returns_scripted_reports_and_records_calls() -> None:
+    from datetime import UTC, datetime
+
+    from prismal_sdk import UsageReport
+
+    from tests.usage_payloads import USAGE_REPORT
+
+    report = UsageReport.model_validate(USAGE_REPORT)
+    fake = FakeAsyncPrismalClient(usage_reports=[report])
+    since = datetime(2026, 11, 1, tzinfo=UTC)
+    assert await fake.usage(thread_id="thread-1", since=since) is report
+    assert fake.usage_calls == [{"thread_id": "thread-1", "since": since}]
+
+
+async def test_usage_raises_scripted_errors() -> None:
+    from prismal_sdk import InvalidRequestError, PrismalAPIError
+
+    not_found = PrismalAPIError(404, "not_found", "Not Found")
+    bad = InvalidRequestError(400, "invalid_window", "since > until")
+    fake = FakeAsyncPrismalClient(usage_reports=[not_found, bad])
+    with pytest.raises(PrismalAPIError) as info:
+        await fake.usage()
+    assert info.value.status_code == 404
+    with pytest.raises(InvalidRequestError):
+        await fake.usage()
+
+
+async def test_usage_without_a_script_fails_loudly() -> None:
+    with pytest.raises(AssertionError, match="no scripted usage"):
+        await FakeAsyncPrismalClient().usage()
+
+
+async def test_usage_gate_holds_the_call() -> None:
+    from prismal_sdk import UsageReport
+
+    from tests.usage_payloads import USAGE_REPORT
+
+    gate = asyncio.Event()
+    fake = FakeAsyncPrismalClient(
+        usage_reports=[UsageReport.model_validate(USAGE_REPORT)], usage_gate=gate
+    )
+    task = asyncio.ensure_future(fake.usage())
+    await asyncio.sleep(0.01)
+    assert not task.done() and len(fake.usage_calls) == 1
+    gate.set()
+    assert (await task).totals.total_tokens == 61100

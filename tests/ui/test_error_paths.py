@@ -32,7 +32,7 @@ CASES = [
     pytest.param(PrismalTimeoutError(SERVER_MSG), errors.UNREACHABLE, id="timeout"),
     pytest.param(
         BudgetExceededError(402, "budget_exceeded", SERVER_MSG),
-        errors.OVER_CAPACITY,
+        errors.BUDGET_REACHED,
         id="budget",
     ),
     pytest.param(

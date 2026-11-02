@@ -91,3 +91,27 @@ async def test_startup_disconnect_is_a_warning_toast(make_app: AppFactory) -> No
     async with app.run_test(notifications=True) as pilot:
         await settle(pilot)
         assert (UNREACHABLE, "warning") in _toasts(app)
+
+
+# ── TUI-D-05: usage segment (SPEC-TUI-USG-002, -009) ───────────────────────
+
+
+async def test_usage_segment_renders_before_the_hints(make_app: AppFactory) -> None:
+    app = make_app()
+    async with app.run_test(size=(200, 30)) as pilot:
+        await settle(pilot)
+        assert "last:" not in app.statusbar.text
+        app.statusbar.set_usage("last: 10/5 tok · cache 0% · $?  session: 15 tok · $?")
+        text = app.statusbar.text
+        assert "last: 10/5 tok" in text
+        assert text.index("session: 15 tok") < text.index("F1 help")
+
+
+async def test_usage_segment_is_hidden_when_show_usage_is_false(
+    make_app: AppFactory,
+) -> None:
+    app = make_app(show_usage=False)
+    async with app.run_test(size=(200, 30)) as pilot:
+        await settle(pilot)
+        app.statusbar.set_usage("last: 10/5 tok")
+        assert "last:" not in app.statusbar.text

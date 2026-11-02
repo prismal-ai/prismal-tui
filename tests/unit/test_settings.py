@@ -146,3 +146,20 @@ def test_invalid_log_level_is_a_clear_error(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setenv("PRISMAL_TUI_LOG_LEVEL", "LOUD")
     with pytest.raises(ConfigurationError, match="PRISMAL_TUI_LOG_LEVEL"):
         load_settings()
+
+
+# ── TUI-D-05: PRISMAL_TUI_SHOW_USAGE (SPEC-TUI-USG-009) ────────────────────
+
+
+def test_show_usage_defaults_to_true() -> None:
+    assert PrismalTuiSettings().show_usage is True
+
+
+@pytest.mark.parametrize(
+    ("raw", "value"), [("false", False), ("0", False), ("true", True)]
+)
+def test_show_usage_reads_the_env(
+    monkeypatch: pytest.MonkeyPatch, raw: str, value: bool
+) -> None:
+    monkeypatch.setenv("PRISMAL_TUI_SHOW_USAGE", raw)
+    assert PrismalTuiSettings().show_usage is value

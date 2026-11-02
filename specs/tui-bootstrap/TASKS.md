@@ -67,15 +67,15 @@ before the `v0.1.0` tag (TUI-04-06).
 
 | ID | Task | Est. | Dep | SPEC | Status |
 |---|---|---|---|---|---|
-| TUI-D-01 | Verify before build: pin the `budget_exceeded` fixture (RH2 §11 / CS2 §7); document the `Usage`/`UsageReport` fields the TUI shows (in `docs/configuration.md`, shared with TUI-04-04) | 0.2 d | — | ERR-002, USG-006 | `TODO` |
-| TUI-D-02 | SDK pin bump (done in TUI-00-02); extend `FakeAsyncPrismalClient` with `DoneEvent.usage` + `usage()` scripts (incl. 404, `InvalidRequestError`) | 0.3 d | D-01 | NFR-005 | `TODO` |
-| TUI-D-03 | `session/usage_tally.py`: `UsageTally` + formatting helpers | 0.4 d | D-02 | USG-001, -003, -004, -005 | `TODO` |
-| TUI-D-04 | `ConversationSession` passes `DoneEvent.usage` to the tally | 0.2 d | D-03, 01-04 | SES-002 | `TODO` |
-| TUI-D-05 | `widgets/statusbar.py` usage segment + `PRISMAL_TUI_SHOW_USAGE` | 0.4 d | D-03, 03-01 | USG-002, -009 | `TODO` |
-| TUI-D-06 | `/usage` and `/usage all` + `widgets/usage_modal.py` | 0.6 d | D-02, 02-04 | UX-004, USG-006, -007 | `TODO` |
-| TUI-D-07 | Error paths: 404/connection toasts, `budget_exceeded` copy | 0.3 d | D-06, 01-08 | USG-008, ERR-002 | `TODO` |
-| TUI-D-08 | Pilot UI tests: readout after turn, `n/a`, `/usage` modal, no polling during stream | 0.5 d | D-05..07 | USG-002, -005, -006, -010 | `TODO` |
-| TUI-D-09 | Contract test vs `prismal-server` 0.2 `host_fake_llm_mode` | 0.3 d | D-08, 04-02 | USG-006 | `TODO` |
+| TUI-D-01 | Verify before build: pin the `budget_exceeded` fixture (RH2 §11 / CS2 §7); document the `Usage`/`UsageReport` fields the TUI shows (in `docs/configuration.md`, shared with TUI-04-04) | 0.2 d | — | ERR-002, USG-006 | `DONE` |
+| TUI-D-02 | SDK pin bump (done in TUI-00-02); extend `FakeAsyncPrismalClient` with `DoneEvent.usage` + `usage()` scripts (incl. 404, `InvalidRequestError`) | 0.3 d | D-01 | NFR-005 | `DONE` |
+| TUI-D-03 | `session/usage_tally.py`: `UsageTally` + formatting helpers | 0.4 d | D-02 | USG-001, -003, -004, -005 | `DONE` |
+| TUI-D-04 | `ConversationSession` passes `DoneEvent.usage` to the tally | 0.2 d | D-03, 01-04 | SES-002 | `DONE` |
+| TUI-D-05 | `widgets/statusbar.py` usage segment + `PRISMAL_TUI_SHOW_USAGE` | 0.4 d | D-03, 03-01 | USG-002, -009 | `DONE` |
+| TUI-D-06 | `/usage` and `/usage all` + `widgets/usage_modal.py` | 0.6 d | D-02, 02-04 | UX-004, USG-006, -007 | `DONE` |
+| TUI-D-07 | Error paths: 404/connection toasts, `budget_exceeded` copy | 0.3 d | D-06, 01-08 | USG-008, ERR-002 | `DONE` |
+| TUI-D-08 | Pilot UI tests: readout after turn, `n/a`, `/usage` modal, no polling during stream | 0.5 d | D-05..07 | USG-002, -005, -006, -010 | `DONE` |
+| TUI-D-09 | Contract test vs `prismal-server` 0.2 `host_fake_llm_mode` | 0.3 d | D-08, 04-02 | USG-006 | `DONE` |
 
 ## Phase 4 — Hardening & release (M5)
 
@@ -145,3 +145,4 @@ Phases 0–3 and TUI-04-01..05 are `DONE`; Phase D and TUI-04-06 (the `v0.1.0` t
 | 1.3 | 2026-11-02 | Ernesto Crespo | Phase 2 (transcript & composer UX) done |
 | 1.4 | 2026-11-02 | Ernesto Crespo | Phase 3 (error UX & polish) done; manual checklist run against host 0.2 fake mode |
 | 1.5 | 2026-11-02 | Ernesto Crespo | Phase 4 hardening (TUI-04-01..05) done; tag deferred until Phase D |
+| 1.6 | 2026-11-02 | Ernesto Crespo | Phase D (usage readout, `/usage`, budget copy; TUI-D-01..09) done; contract suite 8/8 vs host 0.2 fake mode |

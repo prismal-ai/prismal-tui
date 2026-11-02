@@ -64,8 +64,28 @@ def test_registry_covers_the_spec_set_with_help_text() -> None:
         "switch",
         "rename",
         "delete",
+        "usage",
         "cancel",
         "quit",
         "help",
     ]
     assert all(c.summary and c.usage.startswith(f"/{c.name}") for c in COMMANDS)
+
+
+# ── TUI-D-06: /usage [all] (SPEC-TUI-UX-004) ───────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("text", "arg"), [("/usage", None), ("/usage all", "all"), ("/usage  ALL ", "all")]
+)
+def test_usage_command(text: str, arg: str | None) -> None:
+    assert parse_command(text) == Command("usage", arg)
+
+
+def test_usage_rejects_other_arguments() -> None:
+    with pytest.raises(CommandError, match=r"Usage: /usage \[all\]"):
+        parse_command("/usage yesterday")
+
+
+def test_usage_is_listed() -> None:
+    assert "usage" in {spec.name for spec in COMMANDS}

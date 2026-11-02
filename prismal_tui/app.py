@@ -5,22 +5,27 @@ Wires settings, the SDK client, the ``ConversationStore`` and one
 **only** place SDK exceptions raised by a turn are caught and mapped to
 friendly text (SPEC-TUI-ERR-001/002); a failing turn never crashes the app or
 touches other conversations (SPEC-TUI-ERR-005), and nothing is retried
-automatically (SPEC-TUI-ERR-004).
+automatically (SPEC-TUI-ERR-004). The only other SDK call site is the
+user-triggered ``/usage`` fetch (SPEC-TUI-USG-008), never polled
+(SPEC-TUI-USG-010).
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol
 from urllib.parse import urlsplit
 
 from prismal_sdk import (
+    BudgetExceededError,
     DoneEvent,
     PrismalSDKError,
     PrismalTransportError,
     TokenEvent,
     ToolCallEvent,
+    UsageReport,
 )
 from textual import work
 from textual.app import App, ComposeResult
@@ -34,6 +39,7 @@ from prismal_tui.errors import (
     friendly_text,
     log_detail,
     log_traceback,
+    usage_friendly_text,
 )
 from prismal_tui.session import (
     ChatClient,
@@ -43,6 +49,7 @@ from prismal_tui.session import (
     TurnInFlightError,
 )
 from prismal_tui.session.models import ConversationNameTaken
+from prismal_tui.session.usage_tally import format_readout
 from prismal_tui.settings import PrismalTuiSettings
 from prismal_tui.store.conversation_store import ConversationStore
 from prismal_tui.widgets.composer import Composer
@@ -50,11 +57,14 @@ from prismal_tui.widgets.help import HelpScreen
 from prismal_tui.widgets.sidebar import ConversationList
 from prismal_tui.widgets.statusbar import StatusBar
 from prismal_tui.widgets.transcript import AssistantTurn, TranscriptView
+from prismal_tui.widgets.usage_modal import UsageScreen
 
 log = logging.getLogger("prismal_tui.app")
 
 DEFAULT_CONVERSATION = "default"
 CANCELLED_NOTE = "— cancelled —"
+NO_USAGE_YET = "No usage yet — send a message in this conversation first."
+USAGE_LOOKBACK = timedelta(days=90)
 
 
 class AppClient(ChatClient, Protocol):
@@ -62,7 +72,22 @@ class AppClient(ChatClient, Protocol):
 
     async def healthz(self) -> Any: ...
 
+    async def usage(
+        self, *, thread_id: str | None = None, since: datetime | None = None
+    ) -> UsageReport: ...
+
     async def aclose(self) -> None: ...
+
+
+def usage_since(created_at: datetime | None, *, now: datetime) -> datetime:
+    """SPEC-TUI-USG-006: the conversation's creation time, else now − 90 d."""
+    return created_at if created_at is not None else now - USAGE_LOOKBACK
+
+
+def local_midnight_utc() -> datetime:
+    """SPEC-TUI-USG-007: today 00:00 local time, expressed in UTC."""
+    local = datetime.now().astimezone()
+    return local.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(UTC)
 
 
 def display_server(url: str) -> str:
@@ -117,6 +142,7 @@ class PrismalTuiApp(App[None]):
         yield StatusBar(
             display_server(self.settings.server_url),
             cancel_key=self.settings.cancel_key,
+            show_usage=self.settings.show_usage,
         )
         yield Footer()
 
@@ -193,6 +219,7 @@ class PrismalTuiApp(App[None]):
         self.query_one(ContentSwitcher).current = view.id
         await self._refresh_sidebar()
         self._sync_activity()
+        self._sync_usage()
 
     def _refresh_sidebar_later(self) -> None:
         """Schedule a sidebar refresh from sync code; requests coalesce."""
@@ -263,6 +290,7 @@ class PrismalTuiApp(App[None]):
                 elif isinstance(event, DoneEvent):
                     self.statusbar.set_connection("connected")
                     self.statusbar.set_message("")  # a good turn clears errors
+                    self._sync_usage()  # already tallied by the session
         except SessionCancelled:
             note = CANCELLED_NOTE
         except TurnInFlightError:
@@ -275,6 +303,10 @@ class PrismalTuiApp(App[None]):
             self._report_error(note)
             if isinstance(exc, PrismalTransportError):
                 self.statusbar.set_connection("disconnected")
+            if isinstance(exc, BudgetExceededError) and exc.usage is not None:
+                # Mid-stream budget stop: the partial turn was still consumed.
+                session.usage.record(exc.usage)
+                self._sync_usage()
         except Exception as exc:  # SPEC-TUI-ERR-005: never crash the app
             log.error(
                 "unexpected error in turn conversation=%s %s",
@@ -298,6 +330,13 @@ class PrismalTuiApp(App[None]):
         )
         self.statusbar.set_busy(active_busy)
         self.refresh_bindings()
+
+    def _sync_usage(self) -> None:
+        """Status-bar readout for the active conversation (SPEC-TUI-USG-002)."""
+        readout = ""
+        if self.active_id is not None:
+            readout = format_readout(self.sessions.get(self.active_id).usage)
+        self.statusbar.set_usage(readout)
 
     def _turn_state_changed(self) -> None:
         self._sync_activity()
@@ -339,6 +378,8 @@ class PrismalTuiApp(App[None]):
                 await self._cmd_rename(command.arg or "")
             case "delete":
                 await self._cmd_delete(command.arg)
+            case "usage":
+                await self._cmd_usage(command.arg)
             case "cancel":
                 if self.active_id and self.sessions.get(self.active_id).cancel():
                     return
@@ -347,6 +388,38 @@ class PrismalTuiApp(App[None]):
                 self.exit()
             case "help":
                 self.action_help()
+
+    async def _cmd_usage(self, scope: str | None) -> None:
+        if scope == "all":
+            self.fetch_usage(None, local_midnight_utc(), "Usage — whole tenant, today")
+            return
+        conv = await self.store.get(self.active_id or "")
+        if conv is None or conv.thread_id is None:
+            self.note(NO_USAGE_YET)
+            return
+        since = usage_since(conv.created_at, now=datetime.now(UTC))
+        self.fetch_usage(conv.thread_id, since, f"Usage — '{conv.name}'")
+
+    @work(exclusive=True, group="usage")
+    async def fetch_usage(
+        self, thread_id: str | None, since: datetime, title: str
+    ) -> None:
+        """One user-requested ``usage()`` call, off the UI path (NFR-004)."""
+        try:
+            report = await self.client.usage(thread_id=thread_id, since=since)
+        except PrismalSDKError as exc:  # SPEC-TUI-USG-008
+            log.warning("usage failed %s", log_detail(exc))
+            self.notify(usage_friendly_text(exc), severity="warning", markup=False)
+            if isinstance(exc, PrismalTransportError):
+                self.statusbar.set_connection("disconnected")
+            return
+        except Exception as exc:  # never crash the app
+            log.error("unexpected error in usage %s", log_traceback(exc))
+            self.notify(usage_friendly_text(exc), severity="warning", markup=False)
+            return
+        self.push_screen(
+            UsageScreen(report, title=title, show_turns=thread_id is not None)
+        )
 
     async def _unique_name(self) -> str:
         taken = {c.name.lower() for c in await self.store.list()}

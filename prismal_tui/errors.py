@@ -12,6 +12,7 @@ import traceback
 from prismal_sdk import (
     BudgetExceededError,
     ForbiddenError,
+    InvalidRequestError,
     PermissionDeniedError,
     PolicyDeniedError,
     PrismalAPIError,
@@ -24,7 +25,8 @@ from prismal_sdk import (
 from prismal_tui.session.models import SessionCancelled, TurnInFlightError
 
 UNREACHABLE = "Can't reach prismal-server — check PRISMAL_TUI_SERVER_URL and try again."
-OVER_CAPACITY = "The assistant is over capacity for now."
+# DELTA-2026-10 SPEC-TUI-ERR-002: refined budget copy.
+BUDGET_REACHED = "Budget limit reached on the server — run /usage for details"
 REQUEST_REFUSED = "That request can't be processed."
 CREDENTIAL_REJECTED = "The server rejected the credential — check PRISMAL_TUI_TOKEN."
 SERVER_NOT_READY = "prismal-server isn't ready yet — try again in a moment."
@@ -32,13 +34,16 @@ CANCELLED = "Cancelled."
 STILL_ANSWERING = "Still answering — press Esc to cancel first."
 GENERIC = "Something went wrong on the server — try again."
 UNEXPECTED = "Something went wrong — details are in the log file."
+# SPEC-TUI-USG-008: /usage failures.
+USAGE_UNSUPPORTED = "usage reporting requires prismal-server ≥ 0.2"
+USAGE_BAD_WINDOW = "The server rejected that usage time window."
 
 # Order matters: the first matching type wins (subclasses before bases).
 _BY_TYPE: tuple[tuple[type[BaseException], str], ...] = (
     (SessionCancelled, CANCELLED),
     (TurnInFlightError, STILL_ANSWERING),
     (PrismalTransportError, UNREACHABLE),
-    (BudgetExceededError, OVER_CAPACITY),
+    (BudgetExceededError, BUDGET_REACHED),
     (PolicyDeniedError, REQUEST_REFUSED),
     (PermissionDeniedError, REQUEST_REFUSED),
     (ForbiddenError, REQUEST_REFUSED),
@@ -52,11 +57,23 @@ def friendly_text(exc: BaseException) -> str:
     for exc_type, text in _BY_TYPE:
         if isinstance(exc, exc_type):
             return text
-    if isinstance(exc, PrismalAPIError) and exc.status_code == 401:
-        return CREDENTIAL_REJECTED
+    if isinstance(exc, PrismalAPIError):
+        if exc.code == "budget_exceeded":
+            return BUDGET_REACHED
+        if exc.status_code == 401:
+            return CREDENTIAL_REJECTED
     if isinstance(exc, PrismalSDKError):
         return GENERIC
     return UNEXPECTED
+
+
+def usage_friendly_text(exc: BaseException) -> str:
+    """Toast copy for a failed ``usage()`` call (SPEC-TUI-USG-008)."""
+    if isinstance(exc, InvalidRequestError):
+        return USAGE_BAD_WINDOW
+    if isinstance(exc, PrismalAPIError) and exc.status_code == 404:
+        return USAGE_UNSUPPORTED  # a 0.1 host has no /v1/usage
+    return friendly_text(exc)
 
 
 def log_detail(exc: BaseException) -> str:

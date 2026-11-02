@@ -36,7 +36,7 @@ The fake host answers `echo: <content>` in ≤16-char token chunks, a
 | 7 | Quit | `/quit` or `ctrl+q` | Exits cleanly, no traceback | ✅ live |
 | 8 | Restart continuity | Quit, relaunch with the same store, `/switch default`, send | "Continuing 'default'…" note; reply arrives on the same `thread_id` | ✅ live |
 | 9 | Server down | Stop the host, send a message | `○ disconnected`, "Can't reach prismal-server — check PRISMAL_TUI_SERVER_URL…"; app keeps running | ✅ live |
-| 10 | Budget exceeded | Host with a tenant budget that is already exhausted | "The assistant is over capacity for now." (DELTA-2026-10 copy arrives in TUI-D-07); partial text kept | ⏳ needs a budget-configured host (not available in fake mode). Covered offline (`test_error_paths.py::budget`). |
+| 10 | Budget exceeded | Host with a tenant budget that is already exhausted | "Budget limit reached on the server — run /usage for details" (DELTA-2026-10, TUI-D-07); partial text kept | ⏳ needs a budget-configured host (not available in fake mode). Covered offline (`test_error_paths.py::budget`). |
 | 11 | Policy denied | Host with a policy that denies the prompt | "That request can't be processed."; no rule name / code shown | ⏳ needs a policy-configured host. Covered offline (`test_error_paths.py::policy`). |
 | 12 | Store hygiene | Inspect the store file after a session | Only the `conversations` table (ids, names, thread ids, timestamps) — no message text, no token | ✅ live |
 

@@ -15,9 +15,10 @@ conversation), streams the reply through `prismal-sdk`, and renders it as
 Markdown in a scrollable transcript — with a single key press (`Esc` by
 default) to cancel mid-turn.
 
-> **Status: pre-release (`0.1.0.dev0`).** Phases TUI-00…04 are implemented
-> (see [`specs/tui-bootstrap/TASKS.md`](./specs/tui-bootstrap/TASKS.md)); the
-> usage readout (Phase D, `DELTA-2026-10`) lands before the `v0.1.0` tag.
+> **Status: pre-release (`0.1.0.dev0`).** Phases TUI-00…04 and the usage
+> readout (Phase D, `DELTA-2026-10`) are implemented (see
+> [`specs/tui-bootstrap/TASKS.md`](./specs/tui-bootstrap/TASKS.md)); only the
+> `v0.1.0` tag and release workflow (TUI-04-06) remain.
 
 ## Ecosystem position
 
@@ -43,9 +44,11 @@ A single-process Textual app: a scrollable, Markdown-rendered transcript
 that streams tokens as the engine produces them, visible tool-call
 activity, a sidebar to create/switch/rename/delete named local
 conversations (each backed by its own durable engine thread), a small
-slash-command set (`/new`, `/switch`, `/rename`, `/delete`, `/cancel`,
-`/quit`, `/help`), immediate keyboard cancellation of an in-flight turn,
-and friendly error messages on failure. See `specs/tui-bootstrap/PLAN.md`
+slash-command set (`/new`, `/switch`, `/rename`, `/delete`, `/usage`,
+`/cancel`, `/quit`, `/help`), immediate keyboard cancellation of an
+in-flight turn, a status-bar token/cost readout per turn and per session
+(from `prismal-server` ≥ 0.2's own usage numbers), and friendly error
+messages on failure. See `specs/tui-bootstrap/PLAN.md`
 §5 for the full in/out-of-scope list.
 
 ## Quickstart (dev)

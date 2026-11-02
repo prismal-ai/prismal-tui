@@ -19,6 +19,8 @@ class CommandSpec:
     arg: ArgSpec
     usage: str
     summary: str
+    #: Allowed (lower-case) argument values, when the argument is a keyword.
+    choices: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,6 +42,13 @@ COMMANDS: tuple[CommandSpec, ...] = (
         "optional",
         "/delete [name]",
         "Forget a conversation locally (server history is kept)",
+    ),
+    CommandSpec(
+        "usage",
+        "optional",
+        "/usage [all]",
+        "Token usage and cost from the server (all = whole tenant, today)",
+        choices=("all",),
     ),
     CommandSpec("cancel", "none", "/cancel", "Cancel the answer in progress"),
     CommandSpec("quit", "none", "/quit", "Quit prismal-tui"),
@@ -66,4 +75,8 @@ def parse_command(text: str) -> Command:
         raise CommandError(f"Usage: {spec.usage}")
     if spec.arg == "none" and arg is not None:
         raise CommandError(f"Usage: {spec.usage}")
+    if spec.choices and arg is not None:
+        arg = arg.lower()
+        if arg not in spec.choices:
+            raise CommandError(f"Usage: {spec.usage}")
     return Command(spec.name, arg)

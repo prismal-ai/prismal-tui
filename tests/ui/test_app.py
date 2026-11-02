@@ -15,7 +15,7 @@ from prismal_sdk import (
 from textual.widgets import Markdown
 
 from prismal_tui.app import CANCELLED_NOTE, PrismalTuiApp
-from prismal_tui.errors import OVER_CAPACITY, STILL_ANSWERING, UNREACHABLE
+from prismal_tui.errors import BUDGET_REACHED, STILL_ANSWERING, UNREACHABLE
 from prismal_tui.settings import PrismalTuiSettings
 from prismal_tui.store.conversation_store import ConversationStore
 from prismal_tui.widgets.transcript import ActivityLine, UserMessage
@@ -266,7 +266,7 @@ async def test_mid_stream_error_keeps_partial_and_shows_friendly_note(
         await submit(pilot, "q")
         view = app.transcript()
         assert view.turns[0].markdown_sources() == ["half an answer"]
-        assert OVER_CAPACITY in view.notes
+        assert BUDGET_REACHED in view.notes
         rendered = " ".join(view.notes) + app.statusbar.text
         assert "budget_exceeded" not in rendered and "acme" not in rendered
 

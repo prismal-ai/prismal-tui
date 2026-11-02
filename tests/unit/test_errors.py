@@ -10,6 +10,7 @@ import pytest
 from prismal_sdk import (
     BudgetExceededError,
     ForbiddenError,
+    InvalidRequestError,
     PermissionDeniedError,
     PolicyDeniedError,
     PrismalAPIError,
@@ -22,17 +23,20 @@ from prismal_sdk import (
 )
 
 from prismal_tui.errors import (
+    BUDGET_REACHED,
     CANCELLED,
     CREDENTIAL_REJECTED,
     GENERIC,
-    OVER_CAPACITY,
     REQUEST_REFUSED,
     SERVER_NOT_READY,
     STILL_ANSWERING,
     UNEXPECTED,
     UNREACHABLE,
+    USAGE_BAD_WINDOW,
+    USAGE_UNSUPPORTED,
     friendly_text,
     log_detail,
+    usage_friendly_text,
 )
 from prismal_tui.session import SessionCancelled, TurnInFlightError
 
@@ -48,7 +52,8 @@ def _api(cls: type[PrismalAPIError], status: int, code: str) -> PrismalAPIError:
     [
         (PrismalConnectionError(SERVER_MSG), UNREACHABLE),
         (PrismalTimeoutError(SERVER_MSG), UNREACHABLE),
-        (_api(BudgetExceededError, 402, "budget_exceeded"), OVER_CAPACITY),
+        (_api(BudgetExceededError, 402, "budget_exceeded"), BUDGET_REACHED),
+        (_api(PrismalAPIError, 402, "budget_exceeded"), BUDGET_REACHED),
         (_api(PolicyDeniedError, 403, "policy_denied"), REQUEST_REFUSED),
         (_api(PermissionDeniedError, 403, "permission_denied"), REQUEST_REFUSED),
         (_api(ForbiddenError, 403, "forbidden_tenant"), REQUEST_REFUSED),
@@ -70,7 +75,9 @@ def test_mapping(exc: BaseException, expected: str) -> None:
 
 def test_messages_are_the_spec_copy() -> None:
     assert "PRISMAL_TUI_SERVER_URL" in UNREACHABLE
-    assert "over capacity" in OVER_CAPACITY
+    assert BUDGET_REACHED == (
+        "Budget limit reached on the server — run /usage for details"
+    )
     assert "can't be processed" in REQUEST_REFUSED
     assert "Esc" in STILL_ANSWERING
     assert "PRISMAL_TUI_TOKEN" in CREDENTIAL_REJECTED
@@ -101,3 +108,26 @@ def test_log_detail_carries_type_status_and_code() -> None:
 
 def test_log_detail_for_non_api_errors_is_the_type_name() -> None:
     assert log_detail(PrismalConnectionError("x")) == "PrismalConnectionError"
+
+
+# ── TUI-D-07: /usage failures (SPEC-TUI-USG-008) ───────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("exc", "expected"),
+    [
+        (_api(PrismalAPIError, 404, "not_found"), USAGE_UNSUPPORTED),
+        (_api(InvalidRequestError, 400, "invalid_window"), USAGE_BAD_WINDOW),
+        (PrismalConnectionError(SERVER_MSG), UNREACHABLE),
+        (_api(PrismalAPIError, 401, "unauthorized"), CREDENTIAL_REJECTED),
+        (_api(PrismalAPIError, 500, "internal_error"), GENERIC),
+        (RuntimeError(SERVER_MSG), UNEXPECTED),
+    ],
+)
+def test_usage_failure_mapping(exc: BaseException, expected: str) -> None:
+    text = usage_friendly_text(exc)
+    assert text == expected and SERVER_MSG not in text
+
+
+def test_usage_unsupported_copy() -> None:
+    assert USAGE_UNSUPPORTED == "usage reporting requires prismal-server ≥ 0.2"

@@ -7,7 +7,9 @@ One session per local conversation (SPEC-TUI-SES-005). A turn:
    **before** the first ``send_message()`` (SPEC-TUI-SES-001, ADR-002);
 2. stream ``send_message(thread_id, text)`` with the user's text untouched
    (SPEC-TUI-SES-004), yielding ``TokenEvent`` / ``ToolCallEvent`` /
-   ``DoneEvent`` and dropping ``StateEvent`` (SPEC-TUI-SES-002);
+   ``DoneEvent`` and dropping ``StateEvent`` (SPEC-TUI-SES-002); a
+   ``DoneEvent``'s ``usage`` is recorded in the session's in-memory
+   :class:`UsageTally` before it is yielded;
 3. honour :meth:`cancel` even while blocked waiting on the network: the SDK
    iterator is closed (the host then cancels the run) and
    :class:`SessionCancelled` is raised (SPEC-TUI-UX-002, ADR-004).
@@ -38,6 +40,7 @@ from prismal_tui.session.models import (
     SessionCancelled,
     TurnInFlightError,
 )
+from prismal_tui.session.usage_tally import UsageTally
 
 if TYPE_CHECKING:
     from prismal_tui.store.conversation_store import ConversationStore
@@ -74,6 +77,8 @@ class ConversationSession:
         self.conversation_id = conversation_id
         self._in_flight = False
         self._cancel = asyncio.Event()
+        #: In-memory only, never persisted (SPEC-TUI-USG-001).
+        self.usage = UsageTally()
 
     @property
     def in_flight(self) -> bool:
@@ -171,6 +176,9 @@ class ConversationSession:
                     counts["token"] += 1
                 elif isinstance(event, ToolCallEvent):
                     counts["tool_call"] += 1
+                elif isinstance(event, DoneEvent):
+                    # SES-002 (DELTA-2026-10): tally before signalling completion.
+                    self.usage.record(event.usage)
                 yield event
                 if isinstance(event, DoneEvent):
                     break

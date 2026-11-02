@@ -57,15 +57,15 @@ stream already carries everything the transcript renders.
 
 | ID | Task | Est. | Dep | SPEC | Status |
 |---|---|---|---|---|---|
-| TUI-D-01 | **Verify before build**: pin the `budget_exceeded` fixture from RH2 §11 / CS2 §7; document the CS2 `Usage`/`UsageReport` fields shown by the TUI in `docs/configuration.md` | 0.2 d | — | ERR-002, USG-006 | `TODO` |
-| TUI-D-02 | Bump SDK pin; extend `FakeAsyncPrismalClient` with `DoneEvent.usage` + `usage()` scripts seeded from the RH2 example payloads (incl. 404, `InvalidRequestError`) | 0.3 d | D-01 | NFR-005 | `TODO` |
-| TUI-D-03 | `session/usage_tally.py`: `UsageTally` (session `Usage` sum) + formatting helpers (cache % via `cache_hit_ratio`, `estimated`/`subscription`/`none`/mixed cost labels) | 0.4 d | D-02 | USG-001, -003, -004, -005 | `TODO` |
-| TUI-D-04 | `ConversationSession` passes `DoneEvent.usage` to the tally | 0.2 d | D-03 | SES-002 | `TODO` |
-| TUI-D-05 | `widgets/statusbar.py` usage segment + `PRISMAL_TUI_SHOW_USAGE` setting | 0.4 d | D-03 | USG-002, -009 | `TODO` |
-| TUI-D-06 | `/usage` and `/usage all` commands + `widgets/usage_modal.py` | 0.6 d | D-02 | UX-004, USG-006, -007 | `TODO` |
-| TUI-D-07 | Error paths: 404/connection toasts, `budget_exceeded` copy | 0.3 d | D-06 | USG-008, ERR-002 | `TODO` |
-| TUI-D-08 | Pilot UI tests: readout after turn, `n/a` case, `/usage` modal, no polling during stream | 0.5 d | D-05..07 | USG-002, -005, -006, -010 | `TODO` |
-| TUI-D-09 | Contract test vs `prismal-server` 0.2 `host_fake_llm_mode`: turn → readout shows RH2 FAK-002 usage (15 tok, `$?`) → `/usage` `totals` include it | 0.3 d | D-08 | USG-006 | `TODO` |
+| TUI-D-01 | **Verify before build**: pin the `budget_exceeded` fixture from RH2 §11 / CS2 §7; document the CS2 `Usage`/`UsageReport` fields shown by the TUI in `docs/configuration.md` | 0.2 d | — | ERR-002, USG-006 | `DONE` |
+| TUI-D-02 | Bump SDK pin; extend `FakeAsyncPrismalClient` with `DoneEvent.usage` + `usage()` scripts seeded from the RH2 example payloads (incl. 404, `InvalidRequestError`) | 0.3 d | D-01 | NFR-005 | `DONE` |
+| TUI-D-03 | `session/usage_tally.py`: `UsageTally` (session `Usage` sum) + formatting helpers (cache % via `cache_hit_ratio`, `estimated`/`subscription`/`none`/mixed cost labels) | 0.4 d | D-02 | USG-001, -003, -004, -005 | `DONE` |
+| TUI-D-04 | `ConversationSession` passes `DoneEvent.usage` to the tally | 0.2 d | D-03 | SES-002 | `DONE` |
+| TUI-D-05 | `widgets/statusbar.py` usage segment + `PRISMAL_TUI_SHOW_USAGE` setting | 0.4 d | D-03 | USG-002, -009 | `DONE` |
+| TUI-D-06 | `/usage` and `/usage all` commands + `widgets/usage_modal.py` | 0.6 d | D-02 | UX-004, USG-006, -007 | `DONE` |
+| TUI-D-07 | Error paths: 404/connection toasts, `budget_exceeded` copy | 0.3 d | D-06 | USG-008, ERR-002 | `DONE` |
+| TUI-D-08 | Pilot UI tests: readout after turn, `n/a` case, `/usage` modal, no polling during stream | 0.5 d | D-05..07 | USG-002, -005, -006, -010 | `DONE` |
+| TUI-D-09 | Contract test vs `prismal-server` 0.2 `host_fake_llm_mode`: turn → readout shows RH2 FAK-002 usage (15 tok, `$?`) → `/usage` `totals` include it | 0.3 d | D-08 | USG-006 | `DONE` |
 
 Delta estimate: **~3.2 person-days**.
 

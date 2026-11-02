@@ -449,3 +449,59 @@ async def test_mid_stream_error_delivers_every_event_before_raising(
         TokenEvent(delta="two"),
     ]
     assert not session.in_flight
+
+
+# ── TUI-D-04: DoneEvent.usage reaches the tally before completion ──────────
+
+
+async def test_done_usage_is_tallied_before_done_is_yielded(
+    store: ConversationStore,
+) -> None:
+    from prismal_sdk import Usage
+
+    from tests.usage_payloads import FAKE_USAGE
+
+    conv = await store.create("a")
+    usage = Usage(**FAKE_USAGE)
+    fake = FakeAsyncPrismalClient(
+        turns=[FakeTurn.text("hi", usage=usage), FakeTurn.text("again", usage=usage)]
+    )
+    session = ConversationSession(fake, store, conv.id)
+    assert session.usage.last is None
+    async for event in session.stream("q"):
+        if isinstance(event, DoneEvent):
+            assert session.usage.last == usage  # already recorded
+    await _drain(session, "q2")
+    assert session.usage.session_totals.total_tokens == 30
+
+
+async def test_done_without_usage_keeps_totals_fail_open(
+    store: ConversationStore,
+) -> None:
+    from prismal_sdk import Usage
+
+    from tests.usage_payloads import FAKE_USAGE
+
+    conv = await store.create("a")
+    usage = Usage(**FAKE_USAGE)
+    fake = FakeAsyncPrismalClient(
+        turns=[FakeTurn.text("hi", usage=usage), FakeTurn.text("v01 host")]
+    )
+    session = ConversationSession(fake, store, conv.id)
+    await _drain(session, "q")
+    await _drain(session, "q2")
+    assert session.usage.session_totals == usage
+    assert session.usage.last_missing
+
+
+async def test_each_conversation_has_its_own_tally(store: ConversationStore) -> None:
+    from prismal_sdk import Usage
+
+    from tests.usage_payloads import FAKE_USAGE
+
+    a, b = await store.create("a"), await store.create("b")
+    fake = FakeAsyncPrismalClient(turns=[FakeTurn.text("x", usage=Usage(**FAKE_USAGE))])
+    sessions = ConversationSessions(fake, store)
+    await _drain(sessions.get(a.id), "q")
+    assert sessions.get(a.id).usage.has_usage
+    assert not sessions.get(b.id).usage.has_usage

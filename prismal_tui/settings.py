@@ -79,6 +79,7 @@ class PrismalTuiSettings(BaseSettings):
     store_path: Path = Field(default_factory=default_store_path)
     cancel_key: str = "escape"
     log_level: LogLevel = "INFO"
+    show_usage: bool = True  # status-bar usage readout (SPEC-TUI-USG-009)
 
     @field_validator("server_url")
     @classmethod
