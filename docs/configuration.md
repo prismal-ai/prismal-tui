@@ -111,8 +111,9 @@ details"*.
 | `ctrl+q` | Quit |
 
 Slash commands: `/new [name]`, `/switch <name>`, `/rename <name>`,
-`/delete [name]`, `/usage [all]`, `/cancel`, `/quit`, `/help`. Any input that starts with `/`
-is treated as a command and is never sent to the engine.
+`/delete [name]`, `/usage [all]`, `/cancel`, `/quit`, `/help`. Any input that starts with a single `/`
+is treated as a command and is never sent to the engine. To send a message
+that starts with `/`, double it: `//etc/hosts …` sends `/etc/hosts …`.
 
 ## Examples
 

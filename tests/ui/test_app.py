@@ -466,3 +466,26 @@ async def test_sidebar_refreshes_never_overlap(make_app: AppFactory) -> None:
         assert peak == 1
         assert calls <= 6  # 10 deferred requests coalesced into at most two runs
         assert app.sidebar.names[0] == "x"
+
+
+async def test_double_slash_sends_a_message_starting_with_slash(
+    make_app: AppFactory,
+) -> None:
+    fake = FakeAsyncPrismalClient(turns=[FakeTurn.text("ok")])
+    app = make_app(fake)
+    async with app.run_test() as pilot:
+        await settle(pilot)
+        await submit(pilot, "//etc/hosts — what is it?")
+        assert fake.sent == [("thread-1", "/etc/hosts — what is it?")]
+        users = [w.text for w in app.query(UserMessage)]
+        assert users == ["/etc/hosts — what is it?"]
+        assert not any("Unknown command" in n for n in app.transcript().notes)
+
+
+async def test_help_explains_the_slash_escape(make_app: AppFactory) -> None:
+    app = make_app()
+    async with app.run_test() as pilot:
+        await settle(pilot)
+        await pilot.press("f1")
+        await pilot.pause()
+        assert "//text" in app.screen.text  # type: ignore[attr-defined]

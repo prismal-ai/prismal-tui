@@ -1,8 +1,9 @@
 """``Composer`` — message entry + slash-command recognition (SPEC-TUI-UX-001).
 
 The submitted text is forwarded **exactly as typed** (SPEC-TUI-SES-004);
-whitespace-only input is simply not sent. Anything starting with ``/`` is a
-command and never reaches the engine.
+whitespace-only input is simply not sent. Anything starting with a single
+``/`` is a command and never reaches the engine. ``//text`` sends ``/text``:
+the escape slash is the only character ever removed (SPEC-TUI-UX-006).
 """
 
 from __future__ import annotations
@@ -10,7 +11,13 @@ from __future__ import annotations
 from textual.message import Message
 from textual.widgets import Input
 
-from prismal_tui.commands import Command, CommandError, is_command, parse_command
+from prismal_tui.commands import (
+    Command,
+    CommandError,
+    escaped_message,
+    is_command,
+    parse_command,
+)
 
 
 class Composer(Input):
@@ -52,4 +59,5 @@ class Composer(Input):
             except CommandError as exc:
                 self.post_message(self.Hint(str(exc)))
             return
-        self.post_message(self.MessageSubmitted(value))
+        escaped = escaped_message(value)
+        self.post_message(self.MessageSubmitted(value if escaped is None else escaped))

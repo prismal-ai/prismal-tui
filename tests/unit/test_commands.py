@@ -8,6 +8,7 @@ from prismal_tui.commands import (
     COMMANDS,
     Command,
     CommandError,
+    escaped_message,
     is_command,
     parse_command,
 )
@@ -89,3 +90,27 @@ def test_usage_rejects_other_arguments() -> None:
 
 def test_usage_is_listed() -> None:
     assert "usage" in {spec.name for spec in COMMANDS}
+
+
+# ── SPEC-TUI-UX-006: `//` escapes a leading slash ──────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("text", "message"),
+    [
+        ("//etc/hosts is odd", "/etc/hosts is odd"),
+        ("//help", "/help"),
+        ("///x", "//x"),  # exactly one slash is removed
+        ("//", "/"),
+    ],
+)
+def test_double_slash_is_a_message_with_one_slash_removed(
+    text: str, message: str
+) -> None:
+    assert not is_command(text)
+    assert escaped_message(text) == message
+
+
+@pytest.mark.parametrize("text", ["hello", "/help", "a // b", " //x"])
+def test_other_input_is_not_escaped(text: str) -> None:
+    assert escaped_message(text) is None

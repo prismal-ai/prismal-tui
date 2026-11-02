@@ -58,8 +58,21 @@ COMMANDS: tuple[CommandSpec, ...] = (
 _BY_NAME = {spec.name: spec for spec in COMMANDS}
 
 
+ESCAPE = "//"
+
+
 def is_command(text: str) -> bool:
-    return text.startswith("/")
+    return text.startswith("/") and not text.startswith(ESCAPE)
+
+
+def escaped_message(text: str) -> str | None:
+    """``//text`` → ``/text`` (SPEC-TUI-UX-006); ``None`` if not escaped.
+
+    This removes the escape character the user typed to opt out of command
+    parsing. It is the only change ever made to user text, and the rest of
+    the input is kept byte for byte (SPEC-TUI-SES-004 as amended).
+    """
+    return text[1:] if text.startswith(ESCAPE) else None
 
 
 def parse_command(text: str) -> Command:

@@ -31,7 +31,7 @@ a requirement leans on a sibling contract, the sibling's ID is cited
 | SPEC-TUI-SES-001 | `ConversationSession` MUST resolve `thread_id` via `ConversationStore.get(conversation_id)`; on miss it MUST call `create_thread()` exactly once and persist the mapping via `ConversationStore.put(conversation_id, thread_id)` **before** issuing `send_message()`. | `MUST` |
 | SPEC-TUI-SES-002 | `ConversationSession.stream()` MUST consume `send_message()`'s typed events and yield UI-facing updates: `TokenEvent.delta` for transcript feed, `ToolCallEvent` for activity display, `DoneEvent` as the terminal success marker. `StateEvent` MAY be ignored (logged at debug). | `MUST` |
 | SPEC-TUI-SES-003 | At most one in-flight turn per conversation MUST be active at a time; submitting a new message while a turn is in flight on the active conversation MUST be rejected by the composer with a friendly inline note ("still answering — press Esc to cancel first") rather than queued. | `MUST` |
-| SPEC-TUI-SES-004 | User-provided text MUST be passed to `send_message(content=…)` unmodified — no templating, prefixing, or prompt construction anywhere in this repo (`SPEC-CSB-CHT-007`; the engine's security layers apply server-side). | `MUST` |
+| SPEC-TUI-SES-004 | User-provided text MUST be passed to `send_message(content=…)` unmodified — no templating, prefixing, or prompt construction anywhere in this repo (`SPEC-CSB-CHT-007`; the engine's security layers apply server-side). Sole exception: the `//` escape slash is removed (`DELTA-2026-11-slash-escape`, `SPEC-TUI-UX-006`). | `MUST` |
 | SPEC-TUI-SES-005 | Switching the active conversation while a turn is in flight on a *different* conversation MUST NOT cancel that turn; each conversation's session state is independent (a background turn may finish while the user is viewing another conversation). | `SHOULD` |
 
 ## 3. Streaming render
@@ -58,7 +58,7 @@ a requirement leans on a sibling contract, the sibling's ID is cited
 
 | ID | Requirement | Prio |
 |---|---|---|
-| SPEC-TUI-UX-001 | The composer MUST support the slash commands `/new [name]`, `/switch <name>`, `/rename <name>`, `/delete [name]`, `/cancel`, `/quit`, `/help`; unrecognized `/`-prefixed input MUST show a friendly "unknown command" hint rather than being sent as a message. | `MUST` |
+| SPEC-TUI-UX-001 | The composer MUST support the slash commands `/new [name]`, `/switch <name>`, `/rename <name>`, `/delete [name]`, `/cancel`, `/quit`, `/help`; unrecognized `/`-prefixed input MUST show a friendly "unknown command" hint rather than being sent as a message; `//text` is a message sent as `/text` (`SPEC-TUI-UX-006`, `DELTA-2026-11-slash-escape`). | `MUST` |
 | SPEC-TUI-UX-002 | The cancel key binding (default `Esc`, overridable via `PRISMAL_TUI_CANCEL_KEY`) MUST be active only while a turn is in flight and MUST invoke `ConversationSession.cancel()` for the active conversation's turn. | `MUST` |
 | SPEC-TUI-UX-003 | The sidebar MUST list all conversations from `ConversationStore.list()`, ordered by `last_active_at` descending, and support switching the active conversation via keyboard navigation. | `MUST` |
 | SPEC-TUI-UX-004 | `/help` (or a dedicated key binding) MUST display the current key-binding cheatsheet and slash-command list without leaving the app. | `MUST` |

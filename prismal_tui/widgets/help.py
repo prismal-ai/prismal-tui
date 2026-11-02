@@ -24,6 +24,7 @@ def help_text(cancel_key: str) -> str:
     lines += [f"  {key:<16} {what}" for key, what in keys]
     lines += ["", "Commands", ""]
     lines += [f"  {c.usage:<16} {c.summary}" for c in COMMANDS]
+    lines += [f"  {'//text':<16} Send a message that starts with / (as /text)"]
     lines += ["", "Press Esc or F1 to close."]
     return "\n".join(lines)
 

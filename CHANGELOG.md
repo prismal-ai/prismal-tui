@@ -4,6 +4,15 @@ All notable changes to `prismal-tui`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] — 2026-11-02
+
+### Added
+
+- **Slash escape.** `//text` sends the message `/text`, so a message can
+  start with `/` (for example `//etc/hosts doesn't resolve`). Exactly one
+  slash is removed and the rest is sent unmodified. A single leading `/`
+  is still a command. Listed in `/help` (`DELTA-2026-11-slash-escape`).
+
 ## [0.1.0] — 2026-11-02
 
 First release. A Textual terminal front-end for `prismal-server`, built only
@@ -41,4 +50,5 @@ not on PyPI yet, so check out `../prismal-sdk` next to this repo. PyPI is
   responsiveness probe. An opt-in `contract` suite runs against a live
   `prismal-server` 0.2, which CI can start in fake-LLM mode.
 
+[0.1.1]: https://github.com/prismal-ai/prismal-tui/releases/tag/v0.1.1
 [0.1.0]: https://github.com/prismal-ai/prismal-tui/releases/tag/v0.1.0

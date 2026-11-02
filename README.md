@@ -15,7 +15,7 @@ conversation), streams the reply through `prismal-sdk`, and renders it as
 Markdown in a scrollable transcript — with a single key press (`Esc` by
 default) to cancel mid-turn.
 
-> **Status: `0.1.0`** — all of `tui-bootstrap` (phases TUI-00…04 and the
+> **Status: `0.1.1`** — all of `tui-bootstrap` (phases TUI-00…04 and the
 > usage readout, `DELTA-2026-10`) is implemented; see
 > [`CHANGELOG.md`](./CHANGELOG.md) and
 > [`specs/tui-bootstrap/TASKS.md`](./specs/tui-bootstrap/TASKS.md). Installs

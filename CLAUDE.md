@@ -52,7 +52,8 @@ remembers *which* local conversation maps to *which* `thread_id`) is a bug.
       SDK's typed models (`SPEC-TUI-APP-005`).
 - [ ] User-provided text reaches `send_message(content=…)` **unmodified** —
       no templating, prefixing, or prompt building anywhere
-      (`SPEC-TUI-SES-004`).
+      (`SPEC-TUI-SES-004`). Sole exception: the `//` escape drops exactly
+      its first `/` (`SPEC-TUI-UX-006`).
 - [ ] `ConversationStore.put()` happens **before** the first
       `send_message()` call for a new conversation — never after, or a
       crash mid-turn loses the mapping (`SPEC-TUI-STO-001`, `ADR-002`).

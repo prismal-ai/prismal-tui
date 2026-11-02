@@ -147,3 +147,4 @@ All phases (0–4 and D) are `DONE`; `v0.1.0` is tagged.
 | 1.5 | 2026-11-02 | Ernesto Crespo | Phase 4 hardening (TUI-04-01..05) done; tag deferred until Phase D |
 | 1.6 | 2026-11-02 | Ernesto Crespo | Phase D (usage readout, `/usage`, budget copy; TUI-D-01..09) done; contract suite 8/8 vs host 0.2 fake mode |
 | 1.7 | 2026-11-02 | Ernesto Crespo | TUI-04-06 done: version 0.1.0, CHANGELOG, release workflow (tag → gates → build → smoke → GitHub Release); `v0.1.0` tagged |
+| 1.8 | 2026-11-02 | Ernesto Crespo | `DELTA-2026-11-slash-escape` (TUI-E-01..02): `//text` sends `/text`; ships in 0.1.1 |
