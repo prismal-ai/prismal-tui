@@ -433,3 +433,23 @@ async def test_restart_resumes_the_same_thread(tmp_store_path: Path) -> None:
         await submit(pilot, "again")
     assert second.created_threads == ["thread-1"]
     assert second.sent == [("thread-1", "again")]
+
+
+async def test_unexpected_error_log_has_no_exception_message(
+    make_app: AppFactory, caplog: object
+) -> None:
+    """NFR-003: exception text may embed message content — log type + frames only."""
+    import logging
+
+    fake = FakeAsyncPrismalClient(
+        turns=[FakeTurn([RuntimeError("user said: MY-PRIVATE-PROMPT")])]
+    )
+    app = make_app(fake)
+    with caplog.at_level(logging.DEBUG, logger="prismal_tui"):  # type: ignore[attr-defined]
+        async with app.run_test() as pilot:
+            await settle(pilot)
+            await submit(pilot, "x")
+    text = caplog.text  # type: ignore[attr-defined]
+    assert "RuntimeError" in text
+    assert "MY-PRIVATE-PROMPT" not in text
+    assert "fakes.py" in text  # frame locations kept for debugging

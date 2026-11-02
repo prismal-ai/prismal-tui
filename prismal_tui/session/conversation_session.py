@@ -184,8 +184,9 @@ class ConversationSession:
                 if closer is not None:
                     try:
                         await closer()
-                    except Exception:  # noqa: BLE001
-                        log.debug("stream close failed", exc_info=True)
+                    except Exception as exc:  # noqa: BLE001
+                        # Type only: exception text may embed content (NFR-003).
+                        log.debug("stream close failed: %s", type(exc).__name__)
             self._in_flight = False
             self._cancel.clear()
             log.info(

@@ -28,7 +28,12 @@ from textual.containers import Horizontal, Vertical
 from textual.widgets import ContentSwitcher, Footer
 
 from prismal_tui.commands import COMMANDS, Command
-from prismal_tui.errors import STILL_ANSWERING, friendly_text, log_detail
+from prismal_tui.errors import (
+    STILL_ANSWERING,
+    friendly_text,
+    log_detail,
+    log_traceback,
+)
 from prismal_tui.session import (
     ChatClient,
     Conversation,
@@ -242,7 +247,11 @@ class PrismalTuiApp(App[None]):
             if isinstance(exc, PrismalTransportError):
                 self.statusbar.set_connection("disconnected")
         except Exception as exc:  # SPEC-TUI-ERR-005: never crash the app
-            log.exception("unexpected error in turn conversation=%s", conversation_id)
+            log.error(
+                "unexpected error in turn conversation=%s %s",
+                conversation_id,
+                log_traceback(exc),
+            )
             note = friendly_text(exc)
             self.statusbar.set_message(note)
         finally:

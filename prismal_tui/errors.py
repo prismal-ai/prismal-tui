@@ -7,6 +7,8 @@ status codes, server messages or tracebacks ever reach it (SPEC-TUI-ERR-002).
 
 from __future__ import annotations
 
+import traceback
+
 from prismal_sdk import (
     BudgetExceededError,
     ForbiddenError,
@@ -63,3 +65,14 @@ def log_detail(exc: BaseException) -> str:
     if isinstance(exc, PrismalAPIError):
         return f"{name} status={exc.status_code} code={exc.code}"
     return name
+
+
+def log_traceback(exc: BaseException) -> str:
+    """Frame locations only (file:line in function) — never the exception text.
+
+    An exception's message can embed user or model content, which must not
+    reach the log file (SPEC-TUI-NFR-003).
+    """
+    frames = traceback.extract_tb(exc.__traceback__)
+    lines = [f"  {f.filename}:{f.lineno} in {f.name}" for f in frames]
+    return "\n".join([log_detail(exc), *lines])

@@ -24,9 +24,12 @@ LOG_FILE_NAME = "prismal-tui.log"
 
 
 def configure_logging(settings: PrismalTuiSettings) -> None:
-    handler = logging.FileHandler(
-        settings.store_path.parent / LOG_FILE_NAME, encoding="utf-8"
-    )
+    path = settings.store_path.parent / LOG_FILE_NAME
+    # Owner-only (0600): the log holds conversation/thread ids. Created before
+    # the handler opens it so it is never briefly world-readable.
+    path.touch(mode=0o600, exist_ok=True)
+    path.chmod(0o600)
+    handler = logging.FileHandler(path, encoding="utf-8")
     handler.setFormatter(
         logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
     )

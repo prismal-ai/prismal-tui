@@ -76,3 +76,4 @@ def test_valid_config_builds_one_client_store_and_app_then_runs(
     content = log_file.read_text()
     assert "hello from the app" in content
     assert TOKEN not in content
+    assert (log_file.stat().st_mode & 0o777) == 0o600
