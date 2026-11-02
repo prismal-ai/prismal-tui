@@ -68,6 +68,11 @@ target-version = "py313"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "ASYNC", "W"]
 
+[tool.ruff.lint.per-file-ignores]
+# Tests may poll, use small blocking filesystem checks and timeouts freely;
+# the non-blocking rule (SPEC-TUI-NFR-004) is enforced on prismal_tui/ only.
+"tests/**" = ["ASYNC109", "ASYNC110", "ASYNC230", "ASYNC240", "ASYNC251"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["prismal_tui"]
 

@@ -28,14 +28,14 @@ map to `SPEC-TUI-*` IDs and the `M0…M5` milestones in `PLAN.md`.
 
 | ID | Task | Est. | Dep | SPEC | Status |
 |---|---|---|---|---|---|
-| TUI-01-01 | `client.py`: lazy process-wide `AsyncPrismalClient` from settings; closed on shutdown | 0.3 d | 00-03 | APP-003 | `TODO` |
-| TUI-01-02 | `store/conversation_store.py`: SQLite `ConversationStore` (WAL, auto-create schema), `list`/`create`/`get`/`put`/`rename`/`delete` | 0.6 d | 00-02 | STO-001/002/004/005 | `TODO` |
-| TUI-01-03 | Restart-continuity test: real temp SQLite file, same conversation resolves to same `thread_id` across two `ConversationStore` instances | 0.3 d | 01-02 | STO-003 | `TODO` |
-| TUI-01-04 | `session/conversation_session.py`: `ConversationSession.stream()` — thread resolution before first send, event translation (Token/ToolCall/Done), cancellation hook | 0.8 d | 01-01, 01-02, 00-05 | SES-001/002/004 | `TODO` |
-| TUI-01-05 | Per-conversation in-flight guard (reject a new send while a turn is active on the same conversation) | 0.4 d | 01-04 | SES-003 | `TODO` |
-| TUI-01-06 | Independent per-conversation session state (a background turn on a non-active conversation is unaffected by switching) | 0.4 d | 01-04 | SES-005 | `TODO` |
-| TUI-01-07 | Cancellation: `ConversationSession.cancel()` breaks the stream cleanly, no content loss on already-yielded events | 0.5 d | 01-04 | ERR-003 (partial), UX-002 (session half) | `TODO` |
-| TUI-01-08 | `errors.py`: SDK exception → friendly-text mapping table + unit tests for each mapped type | 0.4 d | 01-04 | ERR-001..005 | `TODO` |
+| TUI-01-01 | `client.py`: lazy process-wide `AsyncPrismalClient` from settings; closed on shutdown | 0.3 d | 00-03 | APP-003 | `DONE` |
+| TUI-01-02 | `store/conversation_store.py`: SQLite `ConversationStore` (WAL, auto-create schema), `list`/`create`/`get`/`put`/`rename`/`delete` | 0.6 d | 00-02 | STO-001/002/004/005 | `DONE` |
+| TUI-01-03 | Restart-continuity test: real temp SQLite file, same conversation resolves to same `thread_id` across two `ConversationStore` instances | 0.3 d | 01-02 | STO-003 | `DONE` |
+| TUI-01-04 | `session/conversation_session.py`: `ConversationSession.stream()` — thread resolution before first send, event translation (Token/ToolCall/Done), cancellation hook | 0.8 d | 01-01, 01-02, 00-05 | SES-001/002/004 | `DONE` |
+| TUI-01-05 | Per-conversation in-flight guard (reject a new send while a turn is active on the same conversation) | 0.4 d | 01-04 | SES-003 | `DONE` |
+| TUI-01-06 | Independent per-conversation session state (a background turn on a non-active conversation is unaffected by switching) | 0.4 d | 01-04 | SES-005 | `DONE` |
+| TUI-01-07 | Cancellation: `ConversationSession.cancel()` breaks the stream cleanly, no content loss on already-yielded events | 0.5 d | 01-04 | ERR-003 (partial), UX-002 (session half) | `DONE` |
+| TUI-01-08 | `errors.py`: SDK exception → friendly-text mapping table + unit tests for each mapped type | 0.4 d | 01-04 | ERR-001..005 | `DONE` |
 
 ## Phase 2 — Transcript & composer UX (M3)
 
@@ -131,7 +131,7 @@ Phase 0 → 1 → 2 → 3 → 4 (scaffold before session core before UI before
 polish before hardening); within Phase 2, the transcript (TUI-02-02/03)
 and the composer/sidebar (TUI-02-04/05) can proceed in parallel once
 TUI-02-01 (app skeleton) is `DONE`, since neither depends on the other.
-Phase 0 (TUI-00-01..06) is `DONE`; Phases 1–4 and D are `TODO`.
+Phases 0–1 (TUI-00-01..06, TUI-01-01..08) are `DONE`; Phases 2–4 and D are `TODO`.
 
 ---
 
@@ -141,3 +141,4 @@ Phase 0 (TUI-00-01..06) is `DONE`; Phases 1–4 and D are `TODO`.
 |---|---|---|---|
 | 1.0 | 2026-07-19 | Ernesto Crespo | Initial task breakdown for the terminal UI front-end |
 | 1.1 | 2026-11-02 | Ernesto Crespo | Phase 0 done; DELTA-2026-10 folded in as Phase D; SDK pin `>=0.2,<1` |
+| 1.2 | 2026-11-02 | Ernesto Crespo | Phase 1 (session core) done |
