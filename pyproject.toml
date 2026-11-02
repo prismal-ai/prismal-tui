@@ -1,0 +1,93 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "prismal-tui"
+version = "0.1.0.dev0"
+description = "Terminal UI (Textual) for prismal-server, built exclusively on prismal-sdk."
+readme = "README.md"
+requires-python = ">=3.13"
+license = { file = "LICENSE" }
+authors = [{ name = "Ernesto Crespo", email = "ecrespo@gmail.com" }]
+keywords = ["prismal", "tui", "textual", "terminal", "chat"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
+
+# SPEC-TUI-NFR-005 (as modified by DELTA-2026-10): prismal-sdk>=0.2,<1 plus a
+# tested textual / platformdirs minor. The floor is written `0.2.0.dev0` so the
+# not-yet-released 0.2 line (installed from ../prismal-sdk) satisfies it; it is
+# still the 0.2 floor — test_dependencies.py fails on anything lower.
+# pydantic-settings is already a prismal-sdk dependency; it is declared here
+# because PrismalTuiSettings imports it directly (never rely on transitive deps).
+# NEVER add prismal-ai / prismal-server / httpx here — see CLAUDE.md.
+dependencies = [
+    "prismal-sdk>=0.2.0.dev0,<1",
+    "textual>=8.2,<8.3",
+    "platformdirs>=4.14,<4.15",
+    "pydantic-settings>=2.5,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "pytest-cov>=5.0",
+]
+
+[project.scripts]
+prismal-tui = "prismal_tui.__main__:main"
+
+[project.urls]
+Repository = "https://github.com/prismal-ai/prismal-tui"
+SDK = "https://github.com/prismal-ai/prismal-sdk"
+Server = "https://github.com/prismal-ai/prismal-server"
+
+# prismal-sdk 0.2 is not on PyPI yet: resolve it from the sibling checkout.
+[tool.uv.sources]
+prismal-sdk = { path = "../prismal-sdk", editable = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["prismal_tui"]
+
+# ── Tooling ────────────────────────────────────────────────────────────────
+
+[tool.ruff]
+src = ["prismal_tui", "tests"]
+line-length = 88
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "W"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["prismal_tui"]
+
+[tool.mypy]
+python_version = "3.13"
+packages = ["prismal_tui"]
+strict = true
+warn_unused_ignores = true
+warn_return_any = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers -m 'not contract'"
+markers = [
+    "contract: opt-in tests against a running prismal-server (deselected by default)",
+]
+
+[tool.coverage.run]
+source = ["prismal_tui"]
+branch = true

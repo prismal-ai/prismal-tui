@@ -79,7 +79,7 @@ bearer credential the user configures for the target `prismal-server`.
 
 ```
 prismal-tui/
-├── pyproject.toml                  # deps: prismal-sdk, textual, platformdirs; NO prismal/prismal-server/httpx dep
+├── pyproject.toml                  # deps: prismal-sdk, textual, platformdirs, pydantic-settings; NO prismal/prismal-server/httpx dep
 ├── CLAUDE.md                       # boundary rule + review checklist
 ├── README.md
 ├── prismal_tui/
@@ -371,7 +371,7 @@ from a checkout via `uv pip install -e ".[dev]"`, matching where
 `prismal-webchat` and `prismal-chatbot` currently stand; PyPI publication
 (enabling `uvx prismal-tui`) is TUI-FUTURE-01. Versioning follows the
 org's `MAJOR.MINOR.PATCH`; `v0.1.0` targets the M5 exit criterion in
-`PLAN.md`. Pins: `prismal-sdk>=0.1,<1`, `textual` and `platformdirs` to a
+`PLAN.md`. Pins: `prismal-sdk>=0.2,<1` (DELTA-2026-10), `textual` and `platformdirs` to a
 tested minor (bumped deliberately).
 
 ---

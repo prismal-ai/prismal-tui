@@ -110,7 +110,7 @@ is a backend-only `SecretStr`.
 | SPEC-TUI-NFR-002 | `ruff check .` and `mypy` on `prismal_tui/` MUST be clean in CI. | `MUST` |
 | SPEC-TUI-NFR-003 | Logs MUST NOT contain message content or any secret; they MAY contain conversation id, `thread_id`, event counts, mapped error codes, and redraw counts. | `MUST` |
 | SPEC-TUI-NFR-004 | The app MUST remain responsive (accepts input, redraws) while a turn is streaming — no blocking calls on the Textual event loop. | `MUST` |
-| SPEC-TUI-NFR-005 | Version pins: `prismal-sdk>=0.1,<1`; `textual` and `platformdirs` pinned to a tested minor; bumps are deliberate PRs, not drive-by. | `MUST` |
+| SPEC-TUI-NFR-005 | Version pins: `prismal-sdk>=0.2,<1` (modified by DELTA-2026-10); `textual` and `platformdirs` pinned to a tested minor; bumps are deliberate PRs, not drive-by. | `MUST` |
 
 ---
 

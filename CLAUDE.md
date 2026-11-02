@@ -28,8 +28,9 @@ The full design lives in
 This repo imports **nothing** from `prismal` (engine) or `prismal_server`
 (host), and never opens its own HTTP connection to the host (no direct
 `httpx`). All upstream traffic goes through `prismal_sdk`'s typed client.
-`textual` and `platformdirs` are the only other runtime dependencies beyond
-the SDK. Adding agent/RAG/tool logic, prompt construction, SSE parsing,
+`textual`, `platformdirs` and `pydantic-settings` (already an SDK dependency,
+declared because `settings.py` imports it) are the only other runtime
+dependencies beyond the SDK. Adding agent/RAG/tool logic, prompt construction, SSE parsing,
 wire error-code mapping, or a second copy of conversation history (the
 engine's checkpointer already owns message content — this repo only
 remembers *which* local conversation maps to *which* `thread_id`) is a bug.
@@ -82,8 +83,10 @@ remembers *which* local conversation maps to *which* `thread_id`) is a bug.
       Textual event loop); widget/app tests use Textual's `Pilot` harness
       (also offline); anything touching a live server goes in the opt-in
       `tests/contract/` suite (`SPEC-TUI-NFR-001`).
-- [ ] Dep pins stay `prismal-sdk>=0.1,<1` plus a tested `textual` /
-      `platformdirs` minor; bumps are deliberate PRs (`SPEC-TUI-NFR-005`).
+- [ ] Dep pins stay `prismal-sdk>=0.2,<1` (DELTA-2026-10; written
+      `>=0.2.0.dev0` while 0.2 is unpublished and resolved from
+      `../prismal-sdk`) plus a tested `textual` / `platformdirs` minor;
+      bumps are deliberate PRs (`SPEC-TUI-NFR-005`).
 - [ ] `ruff check .` and `mypy prismal_tui` are clean.
 - [ ] New capability traces to a `SPEC-TUI-*` requirement — if the wire
       contract must change, that is negotiated in `prismal-server` /
@@ -92,7 +95,8 @@ remembers *which* local conversation maps to *which* `thread_id`) is a bug.
 ## Common commands
 
 ```bash
-uv pip install -e ".[dev]"
+uv sync --extra dev                  # needs ../prismal-sdk checked out (SDK 0.2 not on PyPI yet)
+# or: uv pip install -e ".[dev]"
 prismal-tui                          # launch the Textual app (or: python -m prismal_tui)
 uv run pytest                        # unit + ui (offline, fake SDK client + Textual Pilot)
 uv run pytest -m contract            # opt-in: ConversationSession against a running prismal-server

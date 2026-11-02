@@ -10,7 +10,7 @@
 | **Date** | 2026-07-19 |
 | **Phase** | TUI (Terminal UI Bootstrap) |
 | **Repository** | `prismal-ai/prismal-tui` (this repo) |
-| **Upstream contract** | `prismal-sdk >= 0.1, < 1` (typed client over the wire contract fixed by `prismal-server/specs/reference-host-bootstrap/SPEC.md`) |
+| **Upstream contract** | `prismal-sdk >= 0.2, < 1` (raised from 0.1 by `DELTA-2026-10-usage-agui.md`; typed client over the wire contract fixed by `prismal-server/specs/reference-host-bootstrap/SPEC.md`) |
 | **Reviewers** | Tech Lead, AI Architect |
 | **Priority** | P2 (front-end front-end, ships alongside `prismal-webchat` / `prismal-chatbot`) |
 | **Related** | `prismal-ai/prismal` (engine, v3.10.1, 21/21 specs, 29 rutas de agentes); `prismal-ai/prismal-server` (host, v0.1 complete); `prismal-ai/prismal-sdk` (client, bootstrap complete); `prismal-ai/prismal-webchat` and `prismal-ai/prismal-chatbot` (sibling front-ends, SDD seeds — share the "face, not a brain" pattern); sibling `prismal-dashboard` (`PENDIENTE`) |
@@ -224,7 +224,7 @@ a buildable, test-first plan.
 | Risk | Mitigation |
 |---|---|
 | Scope creep — the TUI grows agent/business logic (prompting, retries, local RAG) | `CLAUDE.md` hard rule + review checklist: terminal rendering, keybindings, and local conversation mapping only; the engine owns intelligence, the SDK owns transport |
-| Wire-contract drift reaches the TUI | The SDK absorbs contract changes; this repo pins `prismal-sdk>=0.1,<1` and upgrades deliberately; `contract` suite catches breakage |
+| Wire-contract drift reaches the TUI | The SDK absorbs contract changes; this repo pins `prismal-sdk>=0.2,<1` and upgrades deliberately; `contract` suite catches breakage |
 | Fast token streams flood the terminal with redraws, causing visible lag | Render coalescing at the widget layer (§4.2, `ARCHITECTURE.md`); a scripted-fast-stream UI test asserts a bounded redraw count |
 | Lost conversation continuity on restart | `ConversationStore` (SQLite) persists the mapping before the first `create_thread()` call returns to the UI |
 | Credential leaks (`prismal-server` token) on screen or in the store | Token stays `SecretStr`, used only by the SDK client constructor; a dedicated test asserts it never appears in rendered widget text or the SQLite file |

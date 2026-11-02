@@ -18,11 +18,11 @@ map to `SPEC-TUI-*` IDs and the `M0…M5` milestones in `PLAN.md`.
 | ID | Task | Est. | Dep | SPEC | Status |
 |---|---|---|---|---|---|
 | TUI-00-01 | SDD set (`PLAN`/`ARCHITECTURE`/`SPEC`/`TASKS`) + `CLAUDE.md` + `README.md` | 0.5 d | — | — | `DONE` |
-| TUI-00-02 | `pyproject.toml` (`prismal-sdk>=0.1,<1`, `textual`, `platformdirs`; console script `prismal-tui`; dev extras `pytest`, `pytest-asyncio`, `ruff`, `mypy`) | 0.4 d | 00-01 | NFR-005 | `TODO` |
-| TUI-00-03 | `settings.py`: `PrismalTuiSettings` (prefix, `SecretStr` token, URL/store-path/cancel-key validation, fail-fast) | 0.5 d | 00-02 | CFG-001..003, AUT-001/003 | `TODO` |
-| TUI-00-04 | Boundary-guard test: AST scan — no `prismal`/`prismal_server` import, no direct `httpx` use, no `prismal_sdk` transport internals imported from `widgets/` | 0.3 d | 00-02 | APP-002/005 | `TODO` |
-| TUI-00-05 | `tests/conftest.py`: `FakeAsyncPrismalClient` (scripted event streams), tmp `ConversationStore` fixture | 0.5 d | 00-02 | NFR-001 | `TODO` |
-| TUI-00-06 | CI (`.github/workflows/ci.yml`): ruff + mypy + pytest (unit + ui); opt-in `contract` job | 0.3 d | 00-02 | NFR-002 | `TODO` |
+| TUI-00-02 | `pyproject.toml` (`prismal-sdk>=0.2,<1`, `textual`, `platformdirs`, `pydantic-settings`; console script `prismal-tui`; dev extras `pytest`, `pytest-asyncio`, `ruff`, `mypy`) | 0.4 d | 00-01 | NFR-005 | `DONE` |
+| TUI-00-03 | `settings.py`: `PrismalTuiSettings` (prefix, `SecretStr` token, URL/store-path/cancel-key validation, fail-fast) | 0.5 d | 00-02 | CFG-001..003, AUT-001/003 | `DONE` |
+| TUI-00-04 | Boundary-guard test: AST scan — no `prismal`/`prismal_server` import, no direct `httpx` use, no `prismal_sdk` transport internals imported from `widgets/` | 0.3 d | 00-02 | APP-002/005 | `DONE` |
+| TUI-00-05 | `tests/conftest.py`: `FakeAsyncPrismalClient` (scripted event streams), tmp `ConversationStore` fixture | 0.5 d | 00-02 | NFR-001 | `DONE` |
+| TUI-00-06 | CI (`.github/workflows/ci.yml`): ruff + mypy + pytest (unit + ui); opt-in `contract` job | 0.3 d | 00-02 | NFR-002 | `DONE` |
 
 ## Phase 1 — Session core (M2)
 
@@ -59,6 +59,24 @@ map to `SPEC-TUI-*` IDs and the `M0…M5` milestones in `PLAN.md`.
 | TUI-03-04 | `/help` screen: key-binding cheatsheet + slash-command list | 0.3 d | 02-04 | UX-004 | `TODO` |
 | TUI-03-05 | Manual verification checklist against a real `prismal-server` (server down, budget exceeded, policy denied, normal turn, cancel) | 0.4 d | 03-02 | — | `TODO` |
 
+## Phase D — Usage readout (DELTA-2026-10, folded into v0.1.0)
+
+Source: [`DELTA-2026-10-usage-agui.md`](./DELTA-2026-10-usage-agui.md).
+Runs after Phase 3 (TUI-D-05 needs the status bar from TUI-03-01) and
+before the `v0.1.0` tag (TUI-04-06).
+
+| ID | Task | Est. | Dep | SPEC | Status |
+|---|---|---|---|---|---|
+| TUI-D-01 | Verify before build: pin the `budget_exceeded` fixture (RH2 §11 / CS2 §7); document the `Usage`/`UsageReport` fields the TUI shows (in `docs/configuration.md`, shared with TUI-04-04) | 0.2 d | — | ERR-002, USG-006 | `TODO` |
+| TUI-D-02 | SDK pin bump (done in TUI-00-02); extend `FakeAsyncPrismalClient` with `DoneEvent.usage` + `usage()` scripts (incl. 404, `InvalidRequestError`) | 0.3 d | D-01 | NFR-005 | `TODO` |
+| TUI-D-03 | `session/usage_tally.py`: `UsageTally` + formatting helpers | 0.4 d | D-02 | USG-001, -003, -004, -005 | `TODO` |
+| TUI-D-04 | `ConversationSession` passes `DoneEvent.usage` to the tally | 0.2 d | D-03, 01-04 | SES-002 | `TODO` |
+| TUI-D-05 | `widgets/statusbar.py` usage segment + `PRISMAL_TUI_SHOW_USAGE` | 0.4 d | D-03, 03-01 | USG-002, -009 | `TODO` |
+| TUI-D-06 | `/usage` and `/usage all` + `widgets/usage_modal.py` | 0.6 d | D-02, 02-04 | UX-004, USG-006, -007 | `TODO` |
+| TUI-D-07 | Error paths: 404/connection toasts, `budget_exceeded` copy | 0.3 d | D-06, 01-08 | USG-008, ERR-002 | `TODO` |
+| TUI-D-08 | Pilot UI tests: readout after turn, `n/a`, `/usage` modal, no polling during stream | 0.5 d | D-05..07 | USG-002, -005, -006, -010 | `TODO` |
+| TUI-D-09 | Contract test vs `prismal-server` 0.2 `host_fake_llm_mode` | 0.3 d | D-08, 04-02 | USG-006 | `TODO` |
+
 ## Phase 4 — Hardening & release (M5)
 
 | ID | Task | Est. | Dep | SPEC | Status |
@@ -68,7 +86,7 @@ map to `SPEC-TUI-*` IDs and the `M0…M5` milestones in `PLAN.md`.
 | TUI-04-03 | Responsiveness check: app accepts input / redraws status bar while a turn streams (no event-loop blocking) — scripted slow-stream UI test | 0.4 d | 02-07 | NFR-004 | `TODO` |
 | TUI-04-04 | `docs/configuration.md` (`PRISMAL_TUI_*` reference) | 0.3 d | 00-03 | — | `TODO` |
 | TUI-04-05 | `ruff` + `mypy` clean; coverage baseline recorded | 0.3 d | all | NFR-002 | `TODO` |
-| TUI-04-06 | Tag `v0.1.0`; release workflow | 0.2 d | 04-01..05 | — | `TODO` |
+| TUI-04-06 | Tag `v0.1.0`; release workflow | 0.2 d | 04-01..05, D-01..09 | — | `TODO` |
 
 ## Future (out of scope for v0.1, tracked only)
 
@@ -108,13 +126,12 @@ map to `SPEC-TUI-*` IDs and the `M0…M5` milestones in `PLAN.md`.
 
 ## Estimate roll-up
 
-~**10.5 person-days** across M1–M5 (excludes the M0 seed). Critical path is
+~**13.7 person-days** across M1–M5 (10.5 base + 3.2 for Phase D; excludes the M0 seed). Critical path is
 Phase 0 → 1 → 2 → 3 → 4 (scaffold before session core before UI before
 polish before hardening); within Phase 2, the transcript (TUI-02-02/03)
 and the composer/sidebar (TUI-02-04/05) can proceed in parallel once
 TUI-02-01 (app skeleton) is `DONE`, since neither depends on the other.
-Only TUI-00-01 (this SDD seed) is `DONE`; all implementation is `TODO` —
-the repo is currently `PENDIENTE` per the ecosystem status.
+Phase 0 (TUI-00-01..06) is `DONE`; Phases 1–4 and D are `TODO`.
 
 ---
 
@@ -123,3 +140,4 @@ the repo is currently `PENDIENTE` per the ecosystem status.
 | Version | Date | Author | Changes |
 |---|---|---|---|
 | 1.0 | 2026-07-19 | Ernesto Crespo | Initial task breakdown for the terminal UI front-end |
+| 1.1 | 2026-11-02 | Ernesto Crespo | Phase 0 done; DELTA-2026-10 folded in as Phase D; SDK pin `>=0.2,<1` |
