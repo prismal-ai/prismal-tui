@@ -50,6 +50,7 @@ class FakeAsyncPrismalClient:
     turns: list[FakeTurn] = field(default_factory=list)
     health_error: BaseException | None = None
     ready_error: BaseException | None = None
+    create_thread_error: BaseException | None = None
 
     created_threads: list[str] = field(default_factory=list)
     sent: list[tuple[str, str]] = field(default_factory=list)
@@ -70,6 +71,8 @@ class FakeAsyncPrismalClient:
         return ReadyStatus(status="ready")
 
     async def create_thread(self) -> ThreadCreated:
+        if self.create_thread_error is not None:
+            raise self.create_thread_error
         thread_id = f"thread-{len(self.created_threads) + 1}"
         self.created_threads.append(thread_id)
         return ThreadCreated(thread_id=thread_id)

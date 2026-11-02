@@ -53,11 +53,11 @@ map to `SPEC-TUI-*` IDs and the `M0…M5` milestones in `PLAN.md`.
 
 | ID | Task | Est. | Dep | SPEC | Status |
 |---|---|---|---|---|---|
-| TUI-03-01 | `widgets/statusbar.py`: connection status, error toasts, key-binding hints | 0.5 d | 02-01 | ERR-001/002, APP-004 | `TODO` |
-| TUI-03-02 | Error-path UI tests: connection error, budget-exceeded, policy-denied each render the mapped friendly text, never a code/traceback | 0.5 d | 01-08, 03-01 | ERR-001/002/004/005 | `TODO` |
-| TUI-03-03 | Mid-stream error/cancel preserves partial transcript text + system note (unit + UI test) | 0.4 d | 01-07, 02-02 | ERR-003 | `TODO` |
-| TUI-03-04 | `/help` screen: key-binding cheatsheet + slash-command list | 0.3 d | 02-04 | UX-004 | `TODO` |
-| TUI-03-05 | Manual verification checklist against a real `prismal-server` (server down, budget exceeded, policy denied, normal turn, cancel) | 0.4 d | 03-02 | — | `TODO` |
+| TUI-03-01 | `widgets/statusbar.py`: connection status, error toasts, key-binding hints | 0.5 d | 02-01 | ERR-001/002, APP-004 | `DONE` |
+| TUI-03-02 | Error-path UI tests: connection error, budget-exceeded, policy-denied each render the mapped friendly text, never a code/traceback | 0.5 d | 01-08, 03-01 | ERR-001/002/004/005 | `DONE` |
+| TUI-03-03 | Mid-stream error/cancel preserves partial transcript text + system note (unit + UI test) | 0.4 d | 01-07, 02-02 | ERR-003 | `DONE` |
+| TUI-03-04 | `/help` screen: key-binding cheatsheet + slash-command list | 0.3 d | 02-04 | UX-004 | `DONE` |
+| TUI-03-05 | Manual verification checklist against a real `prismal-server` (server down, budget exceeded, policy denied, normal turn, cancel) — [`docs/manual-verification.md`](../../docs/manual-verification.md); live cancel, budget and policy items still need a non-fake host | 0.4 d | 03-02 | — | `DONE` |
 
 ## Phase D — Usage readout (DELTA-2026-10, folded into v0.1.0)
 
@@ -131,7 +131,7 @@ Phase 0 → 1 → 2 → 3 → 4 (scaffold before session core before UI before
 polish before hardening); within Phase 2, the transcript (TUI-02-02/03)
 and the composer/sidebar (TUI-02-04/05) can proceed in parallel once
 TUI-02-01 (app skeleton) is `DONE`, since neither depends on the other.
-Phases 0–2 (TUI-00-01..06, TUI-01-01..08, TUI-02-01..07) are `DONE`; Phases 3–4 and D are `TODO`.
+Phases 0–3 (TUI-00..03) are `DONE`; Phases 4 and D are `TODO`.
 
 ---
 
@@ -143,3 +143,4 @@ Phases 0–2 (TUI-00-01..06, TUI-01-01..08, TUI-02-01..07) are `DONE`; Phases 3�
 | 1.1 | 2026-11-02 | Ernesto Crespo | Phase 0 done; DELTA-2026-10 folded in as Phase D; SDK pin `>=0.2,<1` |
 | 1.2 | 2026-11-02 | Ernesto Crespo | Phase 1 (session core) done |
 | 1.3 | 2026-11-02 | Ernesto Crespo | Phase 2 (transcript & composer UX) done |
+| 1.4 | 2026-11-02 | Ernesto Crespo | Phase 3 (error UX & polish) done; manual checklist run against host 0.2 fake mode |

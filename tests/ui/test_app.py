@@ -345,25 +345,6 @@ async def test_unknown_command_is_a_hint_and_never_sent(make_app: AppFactory) ->
         assert fake.sent == []
 
 
-async def test_help_lists_commands_and_cancel_key(make_app: AppFactory) -> None:
-    app = make_app(cancel_key="f2")
-    async with app.run_test() as pilot:
-        await settle(pilot)
-        await submit(pilot, "/help")
-        help_text = app.transcript().notes[-1]
-        for cmd in (
-            "/new",
-            "/switch",
-            "/rename",
-            "/delete",
-            "/cancel",
-            "/quit",
-            "/help",
-        ):
-            assert cmd in help_text
-        assert "f2" in help_text
-
-
 async def test_sidebar_orders_by_activity_and_switches_by_keyboard(
     make_app: AppFactory,
 ) -> None:

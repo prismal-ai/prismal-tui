@@ -419,3 +419,33 @@ async def test_cancelling_the_consumer_task_closes_the_sdk_stream(
     assert fake.streams_closed_early == 1
     assert not session.in_flight
     assert not [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+
+
+async def test_mid_stream_error_delivers_every_event_before_raising(
+    store: ConversationStore,
+) -> None:
+    """TUI-03-03 (session half): partial content reaches the UI, then the error."""
+    conv = await store.create("a")
+    fake = FakeAsyncPrismalClient(
+        turns=[
+            FakeTurn(
+                [
+                    TokenEvent(delta="one "),
+                    ToolCallEvent(name="t", args=None),
+                    TokenEvent(delta="two"),
+                    PrismalConnectionError("lost"),
+                ]
+            )
+        ]
+    )
+    session = ConversationSession(fake, store, conv.id)  # type: ignore[arg-type]
+    seen: list[object] = []
+    with pytest.raises(PrismalConnectionError):
+        async for event in session.stream("q"):
+            seen.append(event)
+    assert seen == [
+        TokenEvent(delta="one "),
+        ToolCallEvent(name="t", args=None),
+        TokenEvent(delta="two"),
+    ]
+    assert not session.in_flight

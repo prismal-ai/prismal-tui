@@ -1,8 +1,9 @@
-"""``StatusBar`` — connection state + a short status message (SPEC-TUI-APP-004).
+"""``StatusBar`` — connection, activity, last message and key hints.
 
-Phase 2 keeps it minimal (connection + last status line); error toasts and
-key-binding hints are TUI-03-01. Only friendly text and the server's
-host:port ever reach it — never a URL with credentials, a token or a code.
+SPEC-TUI-APP-004 (connection state), SPEC-TUI-ERR-001/002 (friendly error
+line — the app also raises a toast), TUI-03-01 (key-binding hints). Only
+friendly text and the server's ``host:port`` ever reach it — never a URL
+with credentials, a token, an error code or a server message.
 """
 
 from __future__ import annotations
@@ -25,11 +26,13 @@ class StatusBar(Static):
     StatusBar { dock: bottom; height: 1; padding: 0 1; background: $panel; }
     """
 
-    def __init__(self, server: str) -> None:
+    def __init__(self, server: str, *, cancel_key: str) -> None:
         super().__init__("", markup=False, id="statusbar")
         self.server = server
+        self.cancel_key = cancel_key
         self.connection: Connection = "connecting"
         self.message = ""
+        self.busy = False
         self._render_line()
 
     def set_connection(self, connection: Connection) -> None:
@@ -40,11 +43,24 @@ class StatusBar(Static):
         self.message = message
         self._render_line()
 
+    def set_busy(self, busy: bool) -> None:
+        self.busy = busy
+        self._render_line()
+
+    @property
+    def hints(self) -> str:
+        if self.busy:
+            return f"{self.cancel_key} cancel · F1 help"
+        return "F1 help · ctrl+n new · ctrl+q quit"
+
     def _render_line(self) -> None:
-        line = f"{_ICONS[self.connection]} · {self.server}"
+        parts = [f"{_ICONS[self.connection]} {self.server}"]
+        if self.busy:
+            parts.append("answering…")
         if self.message:
-            line += f" · {self.message}"
-        self.update(line)
+            parts.append(self.message)
+        parts.append(self.hints)
+        self.update(" · ".join(parts))
 
     @property
     def text(self) -> str:

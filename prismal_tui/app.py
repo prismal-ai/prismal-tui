@@ -27,7 +27,7 @@ from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.widgets import ContentSwitcher, Footer
 
-from prismal_tui.commands import COMMANDS, Command
+from prismal_tui.commands import Command
 from prismal_tui.errors import (
     STILL_ANSWERING,
     friendly_text,
@@ -45,6 +45,7 @@ from prismal_tui.session.models import ConversationNameTaken
 from prismal_tui.settings import PrismalTuiSettings
 from prismal_tui.store.conversation_store import ConversationStore
 from prismal_tui.widgets.composer import Composer
+from prismal_tui.widgets.help import HelpScreen
 from prismal_tui.widgets.sidebar import ConversationList
 from prismal_tui.widgets.statusbar import StatusBar
 from prismal_tui.widgets.transcript import AssistantTurn, TranscriptView
@@ -109,7 +110,10 @@ class PrismalTuiApp(App[None]):
             with Vertical(id="chat"):
                 yield ContentSwitcher(id="transcripts")
                 yield Composer()
-        yield StatusBar(display_server(self.settings.server_url))
+        yield StatusBar(
+            display_server(self.settings.server_url),
+            cancel_key=self.settings.cancel_key,
+        )
         yield Footer()
 
     @property
@@ -156,6 +160,7 @@ class PrismalTuiApp(App[None]):
             log.warning("healthz failed: %s", log_detail(exc))
             self.statusbar.set_connection("disconnected")
             self.statusbar.set_message(friendly_text(exc))
+            self.notify(friendly_text(exc), severity="warning", markup=False)
         else:
             self.statusbar.set_connection("connected")
 
@@ -183,7 +188,7 @@ class PrismalTuiApp(App[None]):
         self.active_id = conversation.id
         self.query_one(ContentSwitcher).current = view.id
         await self._refresh_sidebar()
-        self.refresh_bindings()
+        self._sync_activity()
 
     async def _refresh_sidebar(self) -> None:
         await self.sidebar.show(
@@ -234,6 +239,7 @@ class PrismalTuiApp(App[None]):
                     turn.activity(event.name)
                 elif isinstance(event, DoneEvent):
                     self.statusbar.set_connection("connected")
+                    self.statusbar.set_message("")  # a good turn clears errors
         except SessionCancelled:
             note = CANCELLED_NOTE
         except TurnInFlightError:
@@ -243,7 +249,7 @@ class PrismalTuiApp(App[None]):
                 "turn failed conversation=%s %s", conversation_id, log_detail(exc)
             )
             note = friendly_text(exc)
-            self.statusbar.set_message(note)
+            self._report_error(note)
             if isinstance(exc, PrismalTransportError):
                 self.statusbar.set_connection("disconnected")
         except Exception as exc:  # SPEC-TUI-ERR-005: never crash the app
@@ -253,19 +259,33 @@ class PrismalTuiApp(App[None]):
                 log_traceback(exc),
             )
             note = friendly_text(exc)
-            self.statusbar.set_message(note)
+            self._report_error(note)
         finally:
             await turn.finalize(note=note)  # keeps partial text (ERR-003)
             self._turn_state_changed()
 
-    def _turn_state_changed(self) -> None:
+    def _report_error(self, friendly: str) -> None:
+        """SPEC-TUI-ERR-001: status-bar line + toast (the transcript gets a note)."""
+        self.statusbar.set_message(friendly)
+        self.notify(friendly, severity="error", markup=False)
+
+    def _sync_activity(self) -> None:
+        active_busy = (
+            self.active_id is not None and self.sessions.get(self.active_id).in_flight
+        )
+        self.statusbar.set_busy(active_busy)
         self.refresh_bindings()
+
+    def _turn_state_changed(self) -> None:
+        self._sync_activity()
         self.run_worker(self._refresh_sidebar(), group="sidebar", exclusive=True)
 
     # ── actions & commands ─────────────────────────────────────────────────
 
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
         if action == "cancel_turn":
+            if len(self.screen_stack) > 1:  # a modal (help) owns the keys
+                return False
             return (
                 self.active_id is not None
                 and self.sessions.get(self.active_id).in_flight
@@ -280,7 +300,8 @@ class PrismalTuiApp(App[None]):
         await self._cmd_new(None)
 
     def action_help(self) -> None:
-        self._cmd_help()
+        if not isinstance(self.screen, HelpScreen):
+            self.push_screen(HelpScreen(self.settings.cancel_key))
 
     async def on_composer_command_issued(self, event: Composer.CommandIssued) -> None:
         await self.dispatch_command(event.command)
@@ -302,7 +323,7 @@ class PrismalTuiApp(App[None]):
             case "quit":
                 self.exit()
             case "help":
-                self._cmd_help()
+                self.action_help()
 
     async def _unique_name(self) -> str:
         taken = {c.name.lower() for c in await self.store.list()}
@@ -357,15 +378,3 @@ class PrismalTuiApp(App[None]):
         else:
             await self._refresh_sidebar()
         self.note(f"Forgot '{target.name}' locally — its history stays on the server.")
-
-    def _cmd_help(self) -> None:
-        lines = ["Commands:"]
-        lines += [f"  {c.usage:<16} {c.summary}" for c in COMMANDS]
-        lines += [
-            "Keys:",
-            f"  {self.settings.cancel_key:<16} Cancel the answer in progress",
-            "  ctrl+n           New conversation",
-            "  tab              Move between the sidebar and the composer",
-            "  ctrl+q           Quit",
-        ]
-        self.note("\n".join(lines))
