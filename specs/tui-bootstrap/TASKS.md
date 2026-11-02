@@ -41,13 +41,13 @@ map to `SPEC-TUI-*` IDs and the `M0…M5` milestones in `PLAN.md`.
 
 | ID | Task | Est. | Dep | SPEC | Status |
 |---|---|---|---|---|---|
-| TUI-02-01 | `app.py`: `PrismalTuiApp` skeleton — mounts, calls `healthz()` on startup, wires settings/client/store, shutdown closes the client | 0.6 d | 01-01 | APP-001/004 | `TODO` |
-| TUI-02-02 | `widgets/transcript.py`: `TranscriptView` — frame-coalesced token feed, tool-call activity line, Markdown finalize render | 0.8 d | 02-01 | REN-001..004 | `TODO` |
-| TUI-02-03 | Redraw-count UI test: scripted fast token stream produces a bounded number of redraws, final text matches full concatenation | 0.5 d | 02-02 | REN-005 | `TODO` |
-| TUI-02-04 | `widgets/composer.py` + `commands.py`: message entry, slash-command parsing/dispatch (`/new /switch /rename /delete /cancel /quit /help`) | 0.7 d | 02-01 | UX-001/004/005 | `TODO` |
-| TUI-02-05 | `widgets/sidebar.py`: `ConversationList` — list ordered by `last_active_at`, keyboard switch, backed by `ConversationStore` | 0.6 d | 01-02, 02-01 | UX-003 | `TODO` |
-| TUI-02-06 | Cancel key binding wired end-to-end (`Esc` default, `PRISMAL_TUI_CANCEL_KEY`), active only during an in-flight turn | 0.4 d | 01-07, 02-04 | UX-002 | `TODO` |
-| TUI-02-07 | `Pilot`-driven UI tests: send a message, see streamed tokens render, switch conversations, run each slash command | 0.8 d | 02-02..06, 00-05 | NFR-001 | `TODO` |
+| TUI-02-01 | `app.py`: `PrismalTuiApp` skeleton — mounts, calls `healthz()` on startup, wires settings/client/store, shutdown closes the client | 0.6 d | 01-01 | APP-001/004 | `DONE` |
+| TUI-02-02 | `widgets/transcript.py`: `TranscriptView` — frame-coalesced token feed, tool-call activity line, Markdown finalize render | 0.8 d | 02-01 | REN-001..004 | `DONE` |
+| TUI-02-03 | Redraw-count UI test: scripted fast token stream produces a bounded number of redraws, final text matches full concatenation | 0.5 d | 02-02 | REN-005 | `DONE` |
+| TUI-02-04 | `widgets/composer.py` + `commands.py`: message entry, slash-command parsing/dispatch (`/new /switch /rename /delete /cancel /quit /help`) | 0.7 d | 02-01 | UX-001/004/005 | `DONE` |
+| TUI-02-05 | `widgets/sidebar.py`: `ConversationList` — list ordered by `last_active_at`, keyboard switch, backed by `ConversationStore` | 0.6 d | 01-02, 02-01 | UX-003 | `DONE` |
+| TUI-02-06 | Cancel key binding wired end-to-end (`Esc` default, `PRISMAL_TUI_CANCEL_KEY`), active only during an in-flight turn | 0.4 d | 01-07, 02-04 | UX-002 | `DONE` |
+| TUI-02-07 | `Pilot`-driven UI tests: send a message, see streamed tokens render, switch conversations, run each slash command | 0.8 d | 02-02..06, 00-05 | NFR-001 | `DONE` |
 
 ## Phase 3 — Error UX & polish (M4)
 
@@ -131,7 +131,7 @@ Phase 0 → 1 → 2 → 3 → 4 (scaffold before session core before UI before
 polish before hardening); within Phase 2, the transcript (TUI-02-02/03)
 and the composer/sidebar (TUI-02-04/05) can proceed in parallel once
 TUI-02-01 (app skeleton) is `DONE`, since neither depends on the other.
-Phases 0–1 (TUI-00-01..06, TUI-01-01..08) are `DONE`; Phases 2–4 and D are `TODO`.
+Phases 0–2 (TUI-00-01..06, TUI-01-01..08, TUI-02-01..07) are `DONE`; Phases 3–4 and D are `TODO`.
 
 ---
 
@@ -142,3 +142,4 @@ Phases 0–1 (TUI-00-01..06, TUI-01-01..08) are `DONE`; Phases 2–4 and D are `
 | 1.0 | 2026-07-19 | Ernesto Crespo | Initial task breakdown for the terminal UI front-end |
 | 1.1 | 2026-11-02 | Ernesto Crespo | Phase 0 done; DELTA-2026-10 folded in as Phase D; SDK pin `>=0.2,<1` |
 | 1.2 | 2026-11-02 | Ernesto Crespo | Phase 1 (session core) done |
+| 1.3 | 2026-11-02 | Ernesto Crespo | Phase 2 (transcript & composer UX) done |

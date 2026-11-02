@@ -41,6 +41,7 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.11",
     "pytest-cov>=5.0",
+    "pytest-timeout>=2.3",
 ]
 
 [project.scripts]
@@ -89,6 +90,8 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 addopts = "-ra --strict-markers -m 'not contract'"
+# A hung Pilot test (e.g. waiting on a gated turn) fails instead of blocking CI.
+timeout = 30
 markers = [
     "contract: opt-in tests against a running prismal-server (deselected by default)",
 ]

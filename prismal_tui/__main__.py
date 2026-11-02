@@ -1,29 +1,56 @@
 """Console-script entrypoint: ``prismal-tui`` / ``python -m prismal_tui``.
 
-SPEC-TUI-APP-001. Settings are validated before anything is mounted, so a
-bad ``PRISMAL_TUI_*`` value fails fast with a readable message (exit 2).
-The Textual app itself is wired in TUI-02-01.
+SPEC-TUI-APP-001: build ``PrismalTuiSettings`` (failing fast, before anything
+mounts, on a bad ``PRISMAL_TUI_*`` value — exit 2), one ``AsyncPrismalClient``,
+one ``ConversationStore`` and one ``PrismalTuiApp``, then run it.
+
+Logs go to a file next to the store (ARCHITECTURE §7) — never to the
+terminal the app is drawing on, and never with message content or secrets
+(SPEC-TUI-NFR-003).
 """
 
 from __future__ import annotations
 
+import logging
 import sys
 from collections.abc import Sequence
 
-from prismal_tui.settings import ConfigurationError, load_settings
+from prismal_tui.app import PrismalTuiApp
+from prismal_tui.client import get_client
+from prismal_tui.settings import ConfigurationError, PrismalTuiSettings, load_settings
+from prismal_tui.store.conversation_store import ConversationStore
+
+LOG_FILE_NAME = "prismal-tui.log"
+
+
+def configure_logging(settings: PrismalTuiSettings) -> None:
+    handler = logging.FileHandler(
+        settings.store_path.parent / LOG_FILE_NAME, encoding="utf-8"
+    )
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
+    )
+    logger = logging.getLogger("prismal_tui")
+    logger.setLevel(settings.log_level)
+    logger.addHandler(handler)
+    logger.propagate = False
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     del argv  # no CLI flags in v0.1 — configuration is env-only
     try:
-        load_settings()
+        settings = load_settings()
     except ConfigurationError as exc:
         print(f"prismal-tui: {exc}", file=sys.stderr)
         return 2
-    print(
-        "prismal-tui: the terminal app is not wired yet (TUI-02-01).", file=sys.stderr
+    configure_logging(settings)
+    app = PrismalTuiApp(
+        settings=settings,
+        client=get_client(settings),
+        store=ConversationStore(settings.store_path),
     )
-    return 1
+    app.run()
+    return 0
 
 
 if __name__ == "__main__":

@@ -55,7 +55,7 @@ class ChatClient(Protocol):
     async def create_thread(self) -> ThreadCreated: ...
 
     def send_message(
-        self, thread_id: str, content: str, /, **kwargs: Any
+        self, thread_id: str, content: str
     ) -> AsyncIterator[ChatEvent]: ...
 
 
@@ -219,6 +219,9 @@ class ConversationSessions:
         session = self._sessions.pop(conversation_id, None)
         if session is not None:
             session.cancel()
+
+    def in_flight_ids(self) -> frozenset[str]:
+        return frozenset(cid for cid, s in self._sessions.items() if s.in_flight)
 
     def cancel_all(self) -> None:
         for session in self._sessions.values():
