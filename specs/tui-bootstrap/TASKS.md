@@ -81,11 +81,11 @@ before the `v0.1.0` tag (TUI-04-06).
 
 | ID | Task | Est. | Dep | SPEC | Status |
 |---|---|---|---|---|---|
-| TUI-04-01 | Secret-leak test: token absent from rendered widget text, `ConversationStore` file contents, logs, and exception text | 0.4 d | 01-01, 03-01 | AUT-002, NFR-003 | `TODO` |
-| TUI-04-02 | `tests/contract/`: opt-in suite — `ConversationSession` vs a running `prismal-server` (thread reuse, streamed turn, cancel, error path) | 0.5 d | all Phase 1 | NFR-001 | `TODO` |
-| TUI-04-03 | Responsiveness check: app accepts input / redraws status bar while a turn streams (no event-loop blocking) — scripted slow-stream UI test | 0.4 d | 02-07 | NFR-004 | `TODO` |
-| TUI-04-04 | `docs/configuration.md` (`PRISMAL_TUI_*` reference) | 0.3 d | 00-03 | — | `TODO` |
-| TUI-04-05 | `ruff` + `mypy` clean; coverage baseline recorded | 0.3 d | all | NFR-002 | `TODO` |
+| TUI-04-01 | Secret-leak test: token absent from rendered widget text, `ConversationStore` file contents, logs, and exception text | 0.4 d | 01-01, 03-01 | AUT-002, NFR-003 | `DONE` |
+| TUI-04-02 | `tests/contract/`: opt-in suite — `ConversationSession` vs a running `prismal-server` (thread reuse, streamed turn, cancel, error path) | 0.5 d | all Phase 1 | NFR-001 | `DONE` |
+| TUI-04-03 | Responsiveness check: app accepts input / redraws status bar while a turn streams (no event-loop blocking) — scripted slow-stream UI test | 0.4 d | 02-07 | NFR-004 | `DONE` |
+| TUI-04-04 | `docs/configuration.md` (`PRISMAL_TUI_*` reference) | 0.3 d | 00-03 | — | `DONE` |
+| TUI-04-05 | `ruff` + `mypy` clean; coverage baseline recorded (97.0%, `fail_under = 97` ratchet in `pyproject.toml`) | 0.3 d | all | NFR-002 | `DONE` |
 | TUI-04-06 | Tag `v0.1.0`; release workflow | 0.2 d | 04-01..05, D-01..09 | — | `TODO` |
 
 ## Future (out of scope for v0.1, tracked only)
@@ -131,7 +131,7 @@ Phase 0 → 1 → 2 → 3 → 4 (scaffold before session core before UI before
 polish before hardening); within Phase 2, the transcript (TUI-02-02/03)
 and the composer/sidebar (TUI-02-04/05) can proceed in parallel once
 TUI-02-01 (app skeleton) is `DONE`, since neither depends on the other.
-Phases 0–3 (TUI-00..03) are `DONE`; Phases 4 and D are `TODO`.
+Phases 0–3 and TUI-04-01..05 are `DONE`; Phase D and TUI-04-06 (the `v0.1.0` tag, which waits for Phase D) are `TODO`.
 
 ---
 
@@ -144,3 +144,4 @@ Phases 0–3 (TUI-00..03) are `DONE`; Phases 4 and D are `TODO`.
 | 1.2 | 2026-11-02 | Ernesto Crespo | Phase 1 (session core) done |
 | 1.3 | 2026-11-02 | Ernesto Crespo | Phase 2 (transcript & composer UX) done |
 | 1.4 | 2026-11-02 | Ernesto Crespo | Phase 3 (error UX & polish) done; manual checklist run against host 0.2 fake mode |
+| 1.5 | 2026-11-02 | Ernesto Crespo | Phase 4 hardening (TUI-04-01..05) done; tag deferred until Phase D |

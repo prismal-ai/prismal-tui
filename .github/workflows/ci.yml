@@ -11,8 +11,12 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
+      run_contract:
+        description: "Run the opt-in contract suite"
+        type: boolean
+        default: false
       contract_server_url:
-        description: "Run the contract suite against this prismal-server URL (blank = skip)"
+        description: "prismal-server URL (blank = start prismal-server in fake-LLM mode in the job)"
         required: false
         default: ""
 
@@ -49,12 +53,14 @@ jobs:
         run: uv run pytest --cov --cov-report=term-missing
 
   contract:
-    if: github.event_name == 'workflow_dispatch' && inputs.contract_server_url != ''
+    if: github.event_name == 'workflow_dispatch' && inputs.run_contract
     needs: checks
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: prismal-tui
+    env:
+      CONTRACT_URL: ${{ inputs.contract_server_url || 'http://127.0.0.1:8765' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -66,12 +72,29 @@ jobs:
           path: prismal-sdk
           persist-credentials: false
           token: ${{ secrets.PRISMAL_SDK_TOKEN || github.token }}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        if: inputs.contract_server_url == ''
+        with:
+          repository: prismal-ai/prismal-server
+          path: prismal-server
+          persist-credentials: false
+          token: ${{ secrets.PRISMAL_SERVER_TOKEN || github.token }}
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
         with:
           python-version: "3.13"
+      - name: Start prismal-server (fake-LLM mode)
+        if: inputs.contract_server_url == ''
+        working-directory: prismal-server
+        env:
+          PRISMAL_SERVER_HOST_FAKE_LLM_MODE: "true"
+        run: |
+          uv sync --locked
+          nohup uv run uvicorn prismal_server.app:app --host 127.0.0.1 --port 8765 > ../server.log 2>&1 &
+          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:8765/healthz && exit 0; sleep 1; done
+          cat ../server.log; exit 1
       - run: uv sync --locked --extra dev
       - name: Pytest (contract)
         env:
-          PRISMAL_TUI_SERVER_URL: ${{ inputs.contract_server_url }}
+          PRISMAL_TUI_SERVER_URL: ${{ env.CONTRACT_URL }}
           PRISMAL_TUI_TOKEN: ${{ secrets.PRISMAL_TUI_CONTRACT_TOKEN }}
-        run: uv run pytest -m contract
+        run: uv run pytest -m contract -v

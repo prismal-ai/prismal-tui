@@ -29,14 +29,15 @@ ScriptItem = ChatEvent | BaseException
 class FakeTurn:
     """One scripted streaming turn.
 
-    ``gate`` (optional): after the first item, the stream waits for the event
-    to be set — lets a test hold a turn "in flight". ``delay`` sleeps between
-    items (slow-stream / responsiveness tests).
+    ``gate`` (optional): before item ``gate_at`` (default: the second one) the
+    stream waits for the event to be set — lets a test hold a turn "in
+    flight". ``delay`` sleeps between items (slow-stream tests).
     """
 
     items: Sequence[ScriptItem]
     gate: asyncio.Event | None = None
     delay: float = 0.0
+    gate_at: int = 1
 
     @classmethod
     def text(cls, *chunks: str, thread_id: str = "t", **kw: Any) -> FakeTurn:
@@ -95,7 +96,7 @@ class FakeAsyncPrismalClient:
         )
         try:
             for index, item in enumerate(turn.items):
-                if index == 1 and turn.gate is not None:
+                if index == turn.gate_at and turn.gate is not None:
                     await turn.gate.wait()
                 if index and turn.delay:
                     await asyncio.sleep(turn.delay)

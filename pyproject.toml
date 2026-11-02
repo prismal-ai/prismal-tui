@@ -99,3 +99,16 @@ markers = [
 [tool.coverage.run]
 source = ["prismal_tui"]
 branch = true
+
+[tool.coverage.report]
+# Baseline recorded at TUI-04-05 (2026-11-02): 97.0% (unit + ui, offline).
+# A ratchet, not a target: raise it when coverage rises, never lower it to
+# turn a red build green.
+fail_under = 97
+show_missing = true
+skip_covered = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "\\.\\.\\.",
+]
