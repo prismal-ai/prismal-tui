@@ -213,3 +213,36 @@ async def test_usage_gate_holds_the_call() -> None:
     assert not task.done() and len(fake.usage_calls) == 1
     gate.set()
     assert (await task).totals.total_tokens == 61100
+
+
+# ── TUI-I-02: run_agui ─────────────────────────────────────────────────────
+
+
+async def test_run_agui_records_content_and_resume_calls() -> None:
+    from prismal_sdk.agui import ResumeEntry, RunFinished
+
+    from tests.fakes import agui_interrupt
+
+    fake = FakeAsyncPrismalClient(
+        turns=[FakeTurn.agui("a", interrupts=[agui_interrupt()]), FakeTurn.agui("b")]
+    )
+    first = [e async for e in fake.run_agui("t1", "hi")]
+    assert isinstance(first[-1], RunFinished) and first[-1].is_interrupted
+    entry = ResumeEntry(interrupt_id="int-1.ckpt-1", payload={"action": "approve"})
+    second = [e async for e in fake.run_agui("t1", resume=[entry])]
+    assert isinstance(second[-1], RunFinished) and not second[-1].is_interrupted
+    assert fake.agui_calls == [
+        {"thread_id": "t1", "content": "hi", "resume": None},
+        {"thread_id": "t1", "content": None, "resume": [entry]},
+    ]
+    assert fake.sent == []
+
+
+@pytest.mark.parametrize("kwargs", [{}, {"content": "x", "resume": ["e"]}])
+async def test_run_agui_needs_exactly_one_of_content_and_resume(
+    kwargs: dict[str, object],
+) -> None:
+    fake = FakeAsyncPrismalClient(turns=[FakeTurn.agui("a")])
+    with pytest.raises(ValueError):
+        [e async for e in fake.run_agui("t", **kwargs)]  # type: ignore[arg-type]
+    assert fake.agui_calls == [] and len(fake.turns) == 1

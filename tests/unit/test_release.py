@@ -25,24 +25,80 @@ def test_changelog_has_an_entry_for_the_version() -> None:
     )
 
 
-def test_release_workflow_gates_on_tag_and_checks() -> None:
+def test_release_workflow_publishes_from_main_with_trusted_publishing() -> None:
+    # DELTA-2026-11-host-0.3 Phase P (TUI-P-01, was TUI-FUTURE-01).
     wf = (ROOT / ".github/workflows/release.yml").read_text()
-    assert "tags:" in wf and "v*" in wf
-    assert 'tag_version="${GITHUB_REF_NAME#v}"' in wf  # tag must equal version
+    assert "branches: [main]" in wf
+    assert "pypi.org/pypi/prismal-tui/" in wf  # skip a version already uploaded
+    assert "id-token: write" in wf and "name: pypi" in wf  # OIDC, no token
+    assert "PYPI_TOKEN" not in wf and "password" not in wf
     for step in (
         "ruff check",
         "mypy prismal_tui",
         "pytest",
         "uv build",
         "scripts/smoke_test.py",
+        "uv publish",
         "gh release create",
     ):
         assert step in wf, step
-    assert "uv publish" not in wf  # PyPI is TUI-FUTURE-01
+    # Gates and smoke tests run before the upload; the tag comes after it.
+    assert wf.index("scripts/smoke_test.py") < wf.index("uv publish")
+    assert wf.index("uv publish") < wf.index("gh release create")
     # Third-party actions stay pinned to a commit SHA, like ci.yml.
     for ref in re.findall(r"uses: (\S+)", wf):
         assert re.search(r"@[0-9a-f]{40}$", ref), ref
 
 
+def test_sdist_leaves_out_repo_only_files() -> None:
+    data = tomllib.loads((ROOT / "pyproject.toml").read_text())
+    exclude = set(data["tool"]["hatch"]["build"]["targets"]["sdist"]["exclude"])
+    assert {".github", "CLAUDE.md", "specs"} <= exclude
+
+
 def test_smoke_script_lives_outside_tests() -> None:
     assert (ROOT / "scripts/smoke_test.py").is_file()
+
+
+def test_workflows_take_the_sdk_from_pypi_not_a_sibling_checkout() -> None:
+    # DELTA-2026-11-host-0.3 (TUI-S-02): prismal-ai-sdk is on PyPI.
+    for name in ("ci.yml", "release.yml"):
+        wf = (ROOT / ".github/workflows" / name).read_text()
+        assert "repository: prismal-ai/prismal-sdk" not in wf, name
+        assert "../prismal-sdk" not in wf, name
+
+
+def test_contract_job_runs_the_published_host_0_3() -> None:
+    wf = (ROOT / ".github/workflows/ci.yml").read_text()
+    assert "prismal-server>=0.3,<0.4" in wf
+    assert "PRISMAL_SERVER_HOST_FAKE_LLM_MODE" in wf
+    assert "PRISMAL_SERVER_HOST_AGUI_ENABLED" in wf
+    assert "repository: prismal-ai/prismal-server" not in wf
+
+
+def _job(wf: str, name: str) -> str:
+    """The text of one top-level job in the workflow (until the next job)."""
+    start = wf.index(f"\n  {name}:\n")
+    nxt = re.search(r"\n  [a-z][a-z0-9-]*:\n", wf[start + 1 :])
+    return wf[start : start + 1 + nxt.start()] if nxt else wf[start:]
+
+
+def test_release_privileges_are_split_per_job() -> None:
+    # Security review on PR #1: the OIDC token never meets repo code, deps or
+    # tests; only main can publish.
+    wf = (ROOT / ".github/workflows/release.yml").read_text()
+    build, publish, release = (
+        _job(wf, "build"),
+        _job(wf, "pypi-publish"),
+        _job(wf, "github-release"),
+    )
+    assert "id-token" not in build and "contents: write" not in build
+    assert "uv build" in build and "pytest" in build
+    assert "id-token: write" in publish and "name: pypi" in publish
+    assert "contents: write" not in publish
+    assert "actions/checkout" not in publish and "uv sync" not in publish
+    assert "download-artifact" in publish and "uv publish" in publish
+    assert "contents: write" in release and "id-token" not in release
+    assert "needs: [plan, pypi-publish]" in release
+    for job in ("plan", "build", "pypi-publish", "github-release"):
+        assert "github.ref == 'refs/heads/main'" in _job(wf, job), job

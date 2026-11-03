@@ -5,9 +5,11 @@ from prismal_tui.session.conversation_session import (
     ConversationSession,
     ConversationSessions,
     SessionEvent,
+    TurnInterrupted,
 )
 from prismal_tui.session.models import (
     Conversation,
+    NothingToResume,
     SessionCancelled,
     TurnInFlightError,
 )
@@ -15,9 +17,11 @@ from prismal_tui.session.models import (
 __all__ = [
     "ChatClient",
     "Conversation",
+    "NothingToResume",
     "ConversationSession",
     "ConversationSessions",
     "SessionCancelled",
     "SessionEvent",
     "TurnInFlightError",
+    "TurnInterrupted",
 ]

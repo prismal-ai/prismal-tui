@@ -7,8 +7,9 @@ hint and is never sent to the engine as a message.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 ArgSpec = Literal["none", "optional", "required"]
 
@@ -49,6 +50,12 @@ COMMANDS: tuple[CommandSpec, ...] = (
         "/usage [all]",
         "Token usage and cost from the server (all = whole tenant, today)",
         choices=("all",),
+    ),
+    CommandSpec(
+        "resume",
+        "optional",
+        "/resume [answer]",
+        "Answer the agent's open question (JSON or text; needs ag-ui)",
     ),
     CommandSpec("cancel", "none", "/cancel", "Cancel the answer in progress"),
     CommandSpec("quit", "none", "/quit", "Quit prismal-tui"),
@@ -93,3 +100,19 @@ def parse_command(text: str) -> Command:
         if arg not in spec.choices:
             raise CommandError(f"Usage: {spec.usage}")
     return Command(spec.name, arg)
+
+
+def resume_payload(answer: str | None) -> Any:
+    """``/resume`` answer → resume payload (SPEC-TUI-SES-004 as amended).
+
+    Valid JSON is sent as the decoded value (engine approval gates expect an
+    object such as ``{"action": "approve"}``); anything else is sent as the
+    exact text; no answer is ``null``. Words are never mapped to actions:
+    the payload's meaning is the engine's, not the face's.
+    """
+    if answer is None:
+        return None
+    try:
+        return json.loads(answer)
+    except ValueError:
+        return answer

@@ -5,8 +5,9 @@ Wires settings, the SDK client, the ``ConversationStore`` and one
 **only** place SDK exceptions raised by a turn are caught and mapped to
 friendly text (SPEC-TUI-ERR-001/002); a failing turn never crashes the app or
 touches other conversations (SPEC-TUI-ERR-005), and nothing is retried
-automatically (SPEC-TUI-ERR-004). The only other SDK call site is the
-user-triggered ``/usage`` fetch (SPEC-TUI-USG-008), never polled
+automatically (SPEC-TUI-ERR-004). A ``/resume`` runs through the same turn
+path (DELTA-2026-11-host-0.3, SPEC-TUI-INT-003). The only other SDK call site
+is the user-triggered ``/usage`` fetch (SPEC-TUI-USG-008), never polled
 (SPEC-TUI-USG-010).
 """
 
@@ -27,13 +28,14 @@ from prismal_sdk import (
     ToolCallEvent,
     UsageReport,
 )
+from prismal_sdk.agui import AgUiInterrupt
 from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.widgets import ContentSwitcher, Footer
 
-from prismal_tui.commands import Command
+from prismal_tui.commands import Command, resume_payload
 from prismal_tui.errors import (
     STILL_ANSWERING,
     friendly_text,
@@ -45,8 +47,10 @@ from prismal_tui.session import (
     ChatClient,
     Conversation,
     ConversationSessions,
+    NothingToResume,
     SessionCancelled,
     TurnInFlightError,
+    TurnInterrupted,
 )
 from prismal_tui.session.models import ConversationNameTaken
 from prismal_tui.session.usage_tally import format_readout
@@ -65,6 +69,16 @@ DEFAULT_CONVERSATION = "default"
 CANCELLED_NOTE = "— cancelled —"
 NO_USAGE_YET = "No usage yet — send a message in this conversation first."
 USAGE_LOOKBACK = timedelta(days=90)
+# DELTA-2026-11-host-0.3 (SPEC-TUI-INT-001/004).
+INTERRUPT_HINT = "Answer with /resume <answer> (JSON or text)"
+NOTHING_TO_RESUME = "Nothing is waiting for an answer in this conversation."
+_NO_RESUME = object()  # sentinel: a plain turn, not a /resume
+
+
+def interrupt_note(interrupt: AgUiInterrupt) -> str:
+    """SPEC-TUI-INT-001: one transcript line per open interrupt."""
+    head = f"⏸ Waiting for your answer — {interrupt.reason or 'input'}"
+    return f"{head}: {interrupt.message}" if interrupt.message else head
 
 
 class AppClient(ChatClient, Protocol):
@@ -121,7 +135,7 @@ class PrismalTuiApp(App[None]):
         self.settings = settings
         self.client = client
         self.store = store
-        self.sessions = ConversationSessions(client, store)
+        self.sessions = ConversationSessions(client, store, protocol=settings.protocol)
         self.active_id: str | None = None
         self._sidebar_lock = asyncio.Lock()
         self._sidebar_dirty = False
@@ -275,26 +289,38 @@ class PrismalTuiApp(App[None]):
 
     @work(group="turns")
     async def run_turn(
-        self, conversation_id: str, text: str, turn: AssistantTurn
+        self,
+        conversation_id: str,
+        text: str,
+        turn: AssistantTurn,
+        resume: Any = _NO_RESUME,
     ) -> None:
+        """One turn — a message, or a ``/resume`` answer when ``resume`` is set."""
         session = self.sessions.get(conversation_id)
         note: str | None = None
+        interrupts: tuple[AgUiInterrupt, ...] = ()
         try:
-            stream = session.stream(text)
+            stream = (
+                session.stream(text) if resume is _NO_RESUME else session.resume(resume)
+            )
             self.call_after_refresh(self._turn_state_changed)
             async for event in stream:
                 if isinstance(event, TokenEvent):
                     turn.feed(event.delta)
                 elif isinstance(event, ToolCallEvent):
                     turn.activity(event.name)
-                elif isinstance(event, DoneEvent):
+                elif isinstance(event, DoneEvent | TurnInterrupted):
                     self.statusbar.set_connection("connected")
                     self.statusbar.set_message("")  # a good turn clears errors
                     self._sync_usage()  # already tallied by the session
+                    if isinstance(event, TurnInterrupted):
+                        interrupts = event.interrupts
         except SessionCancelled:
             note = CANCELLED_NOTE
         except TurnInFlightError:
             note = STILL_ANSWERING
+        except NothingToResume:
+            note = NOTHING_TO_RESUME
         except PrismalSDKError as exc:  # SPEC-TUI-ERR-001/002
             log.warning(
                 "turn failed conversation=%s %s", conversation_id, log_detail(exc)
@@ -317,7 +343,21 @@ class PrismalTuiApp(App[None]):
             self._report_error(note)
         finally:
             await turn.finalize(note=note)  # keeps partial text (ERR-003)
+            if interrupts:
+                self._show_interrupts(conversation_id, interrupts)
             self._turn_state_changed()
+
+    def _show_interrupts(
+        self, conversation_id: str, interrupts: tuple[AgUiInterrupt, ...]
+    ) -> None:
+        """SPEC-TUI-INT-001: one note per interrupt, then the /resume hint."""
+        views = self.query(f"#t-{conversation_id}")
+        if not views:  # the conversation was deleted mid-turn
+            return
+        view = views.first(TranscriptView)
+        for interrupt in interrupts:
+            view.add_note(interrupt_note(interrupt))
+        view.add_note(INTERRUPT_HINT)
 
     def _report_error(self, friendly: str) -> None:
         """SPEC-TUI-ERR-001: status-bar line + toast (the transcript gets a note)."""
@@ -380,6 +420,8 @@ class PrismalTuiApp(App[None]):
                 await self._cmd_delete(command.arg)
             case "usage":
                 await self._cmd_usage(command.arg)
+            case "resume":
+                self._cmd_resume(command.arg)
             case "cancel":
                 if self.active_id and self.sessions.get(self.active_id).cancel():
                     return
@@ -388,6 +430,21 @@ class PrismalTuiApp(App[None]):
                 self.exit()
             case "help":
                 self.action_help()
+
+    def _cmd_resume(self, answer: str | None) -> None:
+        """SPEC-TUI-INT-003/004: answer the open interrupts, never retried."""
+        assert self.active_id is not None
+        session = self.sessions.get(self.active_id)
+        if session.in_flight:
+            self.note(STILL_ANSWERING)
+            return
+        if not session.open_interrupts:
+            self.note(NOTHING_TO_RESUME)  # no network call
+            return
+        view = self.transcript()
+        view.add_user(answer if answer is not None else "/resume")
+        turn = view.begin_turn()
+        self.run_turn(self.active_id, "", turn, resume_payload(answer))
 
     async def _cmd_usage(self, scope: str | None) -> None:
         if scope == "all":

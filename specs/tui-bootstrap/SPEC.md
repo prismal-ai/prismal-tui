@@ -95,6 +95,8 @@ is a backend-only `SecretStr`.
 | `store_path` | `PRISMAL_TUI_STORE_PATH` | `platformdirs` user-data dir / `conversations.db` | `ConversationStore` SQLite file |
 | `cancel_key` | `PRISMAL_TUI_CANCEL_KEY` | `escape` | Key binding that cancels an in-flight turn (§4.3, `ARCHITECTURE.md`) |
 | `log_level` | `PRISMAL_TUI_LOG_LEVEL` | `INFO` | Local log file verbosity |
+| `show_usage` | `PRISMAL_TUI_SHOW_USAGE` | `True` | Status-bar usage readout (`DELTA-2026-10`) |
+| `protocol` | `PRISMAL_TUI_PROTOCOL` | `prismal` | `prismal` (native SSE) or `ag-ui` (AG-UI turns + `/resume`, `DELTA-2026-11-host-0.3`) |
 
 | ID | Requirement | Prio |
 |---|---|---|

@@ -488,38 +488,26 @@ wheels = [
 ]
 
 [[package]]
-name = "prismal-sdk"
-version = "0.2.0.dev0"
-source = { editable = "../prismal-sdk" }
+name = "prismal-ai-sdk"
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "httpx", specifier = ">=0.27" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.11" },
-    { name = "pydantic", specifier = ">=2.5" },
-    { name = "pydantic-settings", specifier = ">=2.5" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
-    { name = "respx", marker = "extra == 'dev'", specifier = ">=0.21" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6" },
-    { name = "websockets", marker = "extra == 'dev'", specifier = ">=13.0" },
-    { name = "websockets", marker = "extra == 'ws'", specifier = ">=13.0" },
+sdist = { url = "https://files.pythonhosted.org/packages/0c/ee/f2680e3810e3dd00a11fcb59f53e94570f0b05c393cda3af209754b871b9/prismal_ai_sdk-0.3.0.tar.gz", hash = "sha256:82fdae18f3ba35a40a43875a40242b09fbf60e2e9a4e98a7c618add3e2dbf964", size = 39939, upload-time = "2026-11-03T09:59:24.668Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/94/9b/61d4e66e9d7a523a9ffe974b169c296f56918ddf658a3da1b93728c7e8b7/prismal_ai_sdk-0.3.0-py3-none-any.whl", hash = "sha256:dceb0dd452d3ddc2c6ef19011af1ea414772611304b45c9ef85fd8f6b6d83d91", size = 51347, upload-time = "2026-11-03T09:59:23.718Z" },
 ]
-provides-extras = ["ws", "dev"]
 
 [[package]]
 name = "prismal-tui"
-version = "0.1.1"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "platformdirs" },
-    { name = "prismal-sdk" },
+    { name = "prismal-ai-sdk" },
     { name = "pydantic-settings" },
     { name = "textual" },
 ]
@@ -538,7 +526,7 @@ dev = [
 requires-dist = [
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.11" },
     { name = "platformdirs", specifier = ">=4.14,<4.15" },
-    { name = "prismal-sdk", editable = "../prismal-sdk" },
+    { name = "prismal-ai-sdk", specifier = ">=0.3,<1" },
     { name = "pydantic-settings", specifier = ">=2.5,<3" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },

@@ -29,6 +29,10 @@ class TurnInFlightError(Exception):
     """A turn is already streaming on this conversation (SPEC-TUI-SES-003)."""
 
 
+class NothingToResume(Exception):
+    """``/resume`` with no open interrupt on this conversation (SPEC-TUI-INT-004)."""
+
+
 class ConversationNotFound(LookupError):
     """No local conversation with that id."""
 

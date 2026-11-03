@@ -1,15 +1,17 @@
 """Offline test doubles (SPEC-TUI-NFR-001, ADR-005).
 
 ``FakeAsyncPrismalClient`` stands in for ``prismal_sdk.AsyncPrismalClient``
-for the subset ``prismal-tui`` uses. Each ``send_message()`` call consumes the
-next scripted :class:`FakeTurn`; script items are SDK events (yielded) or
-exceptions (raised in place, as the real SDK raises a terminal ``error``).
+for the subset ``prismal-tui`` uses. Each ``send_message()`` or ``run_agui()``
+call consumes the next scripted :class:`FakeTurn`; script items are SDK events
+(native or AG-UI, yielded) or exceptions (raised in place, as the real SDK
+raises a terminal ``error`` / ``RUN_ERROR``).
 """
 
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Sequence
+import contextlib
+from collections.abc import AsyncIterator, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -24,8 +26,33 @@ from prismal_sdk import (
     Usage,
     UsageReport,
 )
+from prismal_sdk.agui import (
+    PRISMAL_USAGE_EVENT,
+    AgUiEvent,
+    PrismalUsageEvent,
+    ResumeEntry,
+    RunFinished,
+    RunStarted,
+    TextMessageContent,
+    TextMessageEnd,
+    TextMessageStart,
+    ToolCallEnd,
+    ToolCallStart,
+)
 
-ScriptItem = ChatEvent | BaseException
+ScriptItem = ChatEvent | AgUiEvent | BaseException
+
+
+def agui_interrupt(
+    iid: str = "int-1.ckpt-1",
+    message: str | None = "Approve the deploy?",
+    reason: str = "human_approval",
+) -> dict[str, Any]:
+    """One ``RUN_FINISHED.outcome.interrupts[]`` wire entry."""
+    entry: dict[str, Any] = {"id": iid, "reason": reason, "metadata": {"value": {}}}
+    if message is not None:
+        entry["message"] = message
+    return entry
 
 
 @dataclass
@@ -54,6 +81,50 @@ class FakeTurn:
         events.append(DoneEvent(thread_id=thread_id, finish_reason="stop", usage=usage))
         return cls(events, **kw)
 
+    @classmethod
+    def agui(
+        cls,
+        *chunks: str,
+        thread_id: str = "t",
+        usage: Usage | None = None,
+        tools: Iterable[str] = (),
+        interrupts: Sequence[dict[str, Any]] | None = None,
+        **kw: Any,
+    ) -> FakeTurn:
+        """An AG-UI run as host 0.3 streams it (``usage`` → ``prismal.usage``)."""
+        events: list[ScriptItem] = [
+            RunStarted(type="RUN_STARTED", thread_id=thread_id, run_id="r")
+        ]
+        for n, name in enumerate(tools):
+            events.append(
+                ToolCallStart(
+                    type="TOOL_CALL_START", tool_call_id=f"c{n}", tool_call_name=name
+                )
+            )
+            events.append(ToolCallEnd(type="TOOL_CALL_END", tool_call_id=f"c{n}"))
+        if chunks:
+            events.append(TextMessageStart(type="TEXT_MESSAGE_START", message_id="m"))
+            events.extend(
+                TextMessageContent(type="TEXT_MESSAGE_CONTENT", message_id="m", delta=c)
+                for c in chunks
+            )
+            events.append(TextMessageEnd(type="TEXT_MESSAGE_END", message_id="m"))
+        if usage is not None:
+            events.append(
+                PrismalUsageEvent(type="CUSTOM", name=PRISMAL_USAGE_EVENT, value=usage)
+            )
+        outcome = (
+            {"type": "interrupt", "interrupts": list(interrupts)}
+            if interrupts
+            else {"type": "success"}
+        )
+        events.append(
+            RunFinished(
+                type="RUN_FINISHED", thread_id=thread_id, run_id="r", outcome=outcome
+            )
+        )
+        return cls(events, **kw)
+
 
 @dataclass
 class FakeAsyncPrismalClient:
@@ -69,6 +140,8 @@ class FakeAsyncPrismalClient:
     created_threads: list[str] = field(default_factory=list)
     sent: list[tuple[str, str]] = field(default_factory=list)
     send_kwargs: list[dict[str, Any]] = field(default_factory=list)
+    #: One entry per ``run_agui()`` call: ``thread_id``, ``content``, ``resume``.
+    agui_calls: list[dict[str, Any]] = field(default_factory=list)
     streams_closed_early: int = 0
     health_calls: int = 0
     usage_calls: list[dict[str, Any]] = field(default_factory=list)
@@ -108,6 +181,36 @@ class FakeAsyncPrismalClient:
         self.send_kwargs.append(
             {"role": role, "metadata": metadata, "org_id": org_id, "protocol": protocol}
         )
+        async with contextlib.aclosing(self._play(turn)) as items:
+            async for item in items:
+                yield item
+
+    async def run_agui(
+        self,
+        thread_id: str,
+        content: str | None = None,
+        *,
+        resume: Sequence[ResumeEntry] | None = None,
+        run_id: str | None = None,
+        org_id: str | None = None,
+    ) -> AsyncIterator[AgUiEvent]:
+        # Same precondition the real SDK checks before any I/O (CS3-RUN-002).
+        if (content is None) == (not resume):
+            raise ValueError("pass exactly one of content and a non-empty resume")
+        assert self.turns, "FakeAsyncPrismalClient: no scripted turn left"
+        turn = self.turns.pop(0)
+        self.agui_calls.append(
+            {
+                "thread_id": thread_id,
+                "content": content,
+                "resume": list(resume) if resume else None,
+            }
+        )
+        async with contextlib.aclosing(self._play(turn)) as items:
+            async for item in items:
+                yield item
+
+    async def _play(self, turn: FakeTurn) -> AsyncIterator[Any]:
         try:
             for index, item in enumerate(turn.items):
                 if index == turn.gate_at and turn.gate is not None:

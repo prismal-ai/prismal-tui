@@ -4,8 +4,7 @@ The release workflow runs it against the freshly built wheel and sdist, in an
 isolated environment holding only the distribution and its runtime
 dependencies:
 
-    uv run --isolated --no-project --with dist/*.whl \
-        --with ../prismal-sdk scripts/smoke_test.py
+    uv run --isolated --no-project --with dist/*.whl scripts/smoke_test.py
 
 It catches packaging failures the test suite cannot see: a module left out
 of the artifact, a missing console script, or a broken entry point. It does
@@ -51,6 +50,10 @@ check(
     dist.version == os.environ.get("EXPECTED_VERSION", dist.version),
     f"version {dist.version} != {os.environ.get('EXPECTED_VERSION')}",
 )
+
+# The SDK arrives from PyPI under its distribution name (DELTA-2026-11-host-0.3).
+sdk_version = importlib.metadata.version("prismal-ai-sdk")
+check(int(sdk_version.split(".")[1]) >= 3, f"prismal-ai-sdk {sdk_version} < 0.3")
 
 # The entry point validates settings before drawing anything: an invalid URL
 # must exit 2 without starting Textual.

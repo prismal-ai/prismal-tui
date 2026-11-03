@@ -18,6 +18,7 @@ the wrong variable is never echoed back.
 | `PRISMAL_TUI_CANCEL_KEY` | `escape` | Key that cancels the answer in progress | A Textual key name, optionally with modifiers (`ctrl+x`, `f2`, `ctrl+shift+c`). A bare printable character (`a`) is rejected — it would be swallowed while typing |
 | `PRISMAL_TUI_LOG_LEVEL` | `INFO` | Verbosity of the local log file | `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
 | `PRISMAL_TUI_SHOW_USAGE` | `true` | Show the token/cost readout in the status bar (`/usage` works either way) | Boolean (`true`/`false`, `1`/`0`) |
+| `PRISMAL_TUI_PROTOCOL` | `prismal` | Turn stream: `prismal` (native SSE) or `ag-ui` (needed to see and answer agent questions with `/resume`; see below) | `prismal` or `ag-ui` |
 
 The *user data dir* comes from [`platformdirs`](https://pypi.org/project/platformdirs/):
 
@@ -99,6 +100,42 @@ turn, or a terminal `error` event mid-stream), the transcript keeps any partial
 answer and shows *"Budget limit reached on the server — run /usage for
 details"*.
 
+## Agent questions and `/resume` (AG-UI)
+
+Some engine routes pause and ask a human first (approval gates, the
+computer-use agent). `prismal-server` 0.3 only reports these pauses on
+AG-UI streams, so the native stream ends such a turn with an empty answer.
+To see and answer them, run with `PRISMAL_TUI_PROTOCOL=ag-ui` against a host
+with AG-UI enabled (`PRISMAL_SERVER_HOST_AGUI_ENABLED=true` on the host and
+`PRISMAL_AGUI_EVENTS_ENABLED=true` for the engine). Otherwise every turn
+shows *"AG-UI isn't enabled on this server — …"*.
+
+When the agent pauses, the transcript shows one line per open question, then
+a hint:
+
+```
+⏸ Waiting for your answer — human_approval: Approve the deploy?
+Answer with /resume <answer> (JSON or text)
+```
+
+`/resume <answer>` answers **every** open question with the same answer:
+
+- valid JSON is sent as the decoded value — engine approval gates expect an
+  object, e.g. `/resume {"action": "approve"}` or
+  `/resume {"action": "reject"}`;
+- anything else is sent as the exact text (surrounding spaces trimmed);
+- `/resume` alone sends `null`.
+
+The TUI never turns words into actions (`/resume approve` sends the string
+`"approve"`, which an approval gate treats as a rejection), and never re-sends
+an answer by itself. Re-sending one manually is safe: the server answers
+*"Nothing is waiting for an answer any more — …"* instead of running it
+twice.
+
+Open questions live in memory only: they are not in the store and are lost
+when the TUI restarts (the server has no way to list them). A plain message
+sent while a question is open goes to the engine as usual.
+
 ## Keys and commands
 
 | Key | Action |
@@ -111,7 +148,7 @@ details"*.
 | `ctrl+q` | Quit |
 
 Slash commands: `/new [name]`, `/switch <name>`, `/rename <name>`,
-`/delete [name]`, `/usage [all]`, `/cancel`, `/quit`, `/help`. Any input that starts with a single `/`
+`/delete [name]`, `/usage [all]`, `/resume [answer]`, `/cancel`, `/quit`, `/help`. Any input that starts with a single `/`
 is treated as a command and is never sent to the engine. To send a message
 that starts with `/`, double it: `//etc/hosts …` sends `/etc/hosts …`.
 
@@ -127,6 +164,9 @@ PRISMAL_TUI_TOKEN="$(pass show prismal/token)" \
 PRISMAL_TUI_ORG_ID=acme \
 PRISMAL_TUI_CANCEL_KEY=ctrl+x \
 prismal-tui
+
+# answer approval gates (host with AG-UI enabled)
+PRISMAL_TUI_PROTOCOL=ag-ui prismal-tui
 
 # throwaway store + verbose log
 PRISMAL_TUI_STORE_PATH=/tmp/prismal-tui/conversations.db \

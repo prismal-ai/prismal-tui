@@ -1,54 +1,100 @@
-# TUI-04-06 — on a `v*` tag: gate, build, smoke-test and attach the wheel and
-# sdist to a GitHub Release. No PyPI upload: v0.1 installs from source
-# (TUI-FUTURE-01), and prismal-sdk 0.2 is not on PyPI yet, so it is checked
-# out next to this repo exactly as in ci.yml.
+# TUI-P-01 (DELTA-2026-11-host-0.3, was TUI-FUTURE-01) — publish `prismal-tui`
+# to PyPI from `main`, like prismal-sdk (SPEC-CS3-REL-001).
+#
+# Every push to `main` (in practice: merging a release PR) runs this workflow.
+# It publishes the version in pyproject.toml when that version is a final
+# release and is not on PyPI yet, then tags `v<version>` and creates the
+# GitHub release with the wheel and sdist attached. Anything else (a `.devN`
+# version, a version already uploaded) ends green without publishing, so
+# re-runs are harmless.
+#
+# Privileges are split per job (security review, PR #1):
+#   plan            contents: read   — decide whether this version ships
+#   build           contents: read   — gates, build, smoke tests → artifact
+#   pypi-publish    id-token: write  — no checkout, no deps: upload artifact
+#   github-release  contents: write  — tag + GitHub release after the upload
+# Every job runs only on refs/heads/main, and the `pypi` environment only
+# accepts deployments from `main`.
+#
+# Publishing uses PyPI trusted publishing (OIDC): no token is stored in the
+# repository. PyPI must list this publisher once — project `prismal-tui`,
+# owner `prismal-ai`, repository `prismal-tui`, workflow `release.yml`,
+# environment `pypi` (https://pypi.org/manage/account/publishing/, as a
+# "pending publisher" while the project does not exist on PyPI yet).
 name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
-  release:
+  plan:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # create the GitHub Release
-    defaults:
-      run:
-        working-directory: prismal-tui
+    outputs:
+      version: ${{ steps.decide.outputs.version }}
+      publish: ${{ steps.decide.outputs.publish }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          path: prismal-tui
           persist-credentials: false
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+      - name: Decide whether this version ships
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="$(uv version --short)"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          # PEP 440 final releases only: no .devN / aN / bN / rcN / +local.
+          if ! [[ "$version" =~ ^[0-9]+(\.[0-9]+)*(\.post[0-9]+)?$ ]]; then
+            echo "::notice::${version} is not a final release; nothing to publish"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          status="$(curl -s -o /dev/null -w '%{http_code}' \
+            "https://pypi.org/pypi/prismal-tui/${version}/json")"
+          if [ "$status" = "200" ]; then
+            echo "::notice::prismal-tui ${version} is already on PyPI; nothing to publish"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          elif [ "$status" != "404" ]; then
+            echo "::error::PyPI answered ${status} for prismal-tui ${version}"
+            exit 1
+          fi
+          # PyPI uploads are immutable: a tag pointing elsewhere would describe
+          # a different artifact, and a version without a changelog entry
+          # ships without release notes.
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/v${version}" >/dev/null 2>&1; then
+            echo "::error::tag v${version} already exists but ${version} is not on PyPI"
+            exit 1
+          fi
+          grep -q "^## \[${version}\]" CHANGELOG.md \
+            || { echo "::error::CHANGELOG.md has no [${version}] entry"; exit 1; }
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: plan
+    if: github.ref == 'refs/heads/main' && needs.plan.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    env:
+      EXPECTED_VERSION: ${{ needs.plan.outputs.version }}
+    steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          repository: prismal-ai/prismal-sdk
-          path: prismal-sdk
           persist-credentials: false
-          token: ${{ secrets.PRISMAL_SDK_TOKEN || github.token }}
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
         with:
           python-version: "3.13"
-
-      # A tag that disagrees with pyproject.toml would release a version
-      # nobody asked for. Fail before building anything.
-      - name: Verify the tag matches the project version
-        run: |
-          set -euo pipefail
-          tag_version="${GITHUB_REF_NAME#v}"
-          project_version="$(uv version --short)"
-          if [ "$tag_version" != "$project_version" ]; then
-            echo "::error::tag ${GITHUB_REF_NAME} does not match project version ${project_version}"
-            exit 1
-          fi
-          grep -q "^## \[${project_version}\]" CHANGELOG.md \
-            || { echo "::error::CHANGELOG.md has no [${project_version}] entry"; exit 1; }
-
       - name: Install
         run: uv sync --locked --extra dev
       - name: Ruff
@@ -57,39 +103,77 @@ jobs:
         run: uv run mypy prismal_tui
       - name: Pytest (unit + ui, offline) + coverage floor
         run: uv run pytest --cov --cov-report=term-missing
-
       - name: Build
         run: uv build
-
       # Catches what the suite cannot: files missing from the artifacts.
       - name: Smoke test (wheel)
-        env:
-          EXPECTED_VERSION: ${{ github.ref_name }}
-        run: |
-          export EXPECTED_VERSION="${EXPECTED_VERSION#v}"
-          uv run --isolated --no-project --with dist/*.whl --with ../prismal-sdk scripts/smoke_test.py
+        run: uv run --isolated --no-project --with dist/*.whl scripts/smoke_test.py
       - name: Smoke test (source distribution)
-        env:
-          EXPECTED_VERSION: ${{ github.ref_name }}
-        run: |
-          export EXPECTED_VERSION="${EXPECTED_VERSION#v}"
-          uv run --isolated --no-project --with dist/*.tar.gz --with ../prismal-sdk scripts/smoke_test.py
-
-      - name: Create GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+        run: uv run --isolated --no-project --with dist/*.tar.gz scripts/smoke_test.py
+      - name: Release notes (this version's CHANGELOG section)
         run: |
           set -euo pipefail
-          version="${TAG#v}"
-          # Release notes = this version's CHANGELOG section.
-          awk -v v="$version" '
+          awk -v v="$EXPECTED_VERSION" '
             $0 ~ "^## \\[" v "\\]" { on = 1; next }
             on && /^## \[/ { exit }
             on && /^\[[^]]+\]: / { next }
             on { print }
           ' CHANGELOG.md > release-notes.md
-          gh release create "$TAG" dist/* \
+          echo "" >> release-notes.md
+          echo "PyPI: https://pypi.org/project/prismal-tui/${EXPECTED_VERSION}/" >> release-notes.md
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-notes
+          path: release-notes.md
+          if-no-files-found: error
+
+  pypi-publish:
+    needs: [plan, build]
+    if: github.ref == 'refs/heads/main' && needs.plan.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/prismal-tui/${{ needs.plan.outputs.version }}/
+    permissions:
+      id-token: write # OIDC token for PyPI trusted publishing — nothing else
+    steps:
+      # No checkout and no dependency install: only the built artifacts and
+      # uv itself ever run next to the OIDC token.
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: dist
+          path: dist/
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+      - name: Publish to PyPI (trusted publishing)
+        run: uv publish dist/*
+
+  github-release:
+    needs: [plan, pypi-publish]
+    if: github.ref == 'refs/heads/main' && needs.plan.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the `v<version>` tag and the GitHub release
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: dist
+          path: dist/
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-notes
+      - name: Tag and create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${VERSION}" dist/* \
             --repo "$GITHUB_REPOSITORY" \
-            --title "prismal-tui $version" \
+            --target "$GITHUB_SHA" \
+            --title "prismal-tui ${VERSION}" \
             --notes-file release-notes.md

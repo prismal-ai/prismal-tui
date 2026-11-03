@@ -84,10 +84,15 @@ remembers *which* local conversation maps to *which* `thread_id`) is a bug.
       Textual event loop); widget/app tests use Textual's `Pilot` harness
       (also offline); anything touching a live server goes in the opt-in
       `tests/contract/` suite (`SPEC-TUI-NFR-001`).
-- [ ] Dep pins stay `prismal-sdk>=0.2,<1` (DELTA-2026-10; written
-      `>=0.2.0.dev0` while 0.2 is unpublished and resolved from
-      `../prismal-sdk`) plus a tested `textual` / `platformdirs` minor;
-      bumps are deliberate PRs (`SPEC-TUI-NFR-005`).
+- [ ] Dep pins stay `prismal-ai-sdk>=0.3,<1` from PyPI (the SDK's
+      distribution name; the import module is still `prismal_sdk`; no
+      `[tool.uv.sources]` sibling checkout — DELTA-2026-11-host-0.3) plus a
+      tested `textual` / `platformdirs` minor; bumps are deliberate PRs
+      (`SPEC-TUI-NFR-005`).
+- [ ] A `/resume` answer reaches `run_agui(resume=…)` as the decoded JSON
+      value or the exact text — never mapped to approve/reject, never
+      re-sent automatically; open interrupts stay in memory only
+      (`SPEC-TUI-SES-004` as amended, `SPEC-TUI-INT-002/005`).
 - [ ] `ruff check .` and `mypy prismal_tui` are clean.
 - [ ] New capability traces to a `SPEC-TUI-*` requirement — if the wire
       contract must change, that is negotiated in `prismal-server` /
@@ -96,11 +101,11 @@ remembers *which* local conversation maps to *which* `thread_id`) is a bug.
 ## Common commands
 
 ```bash
-uv sync --extra dev                  # needs ../prismal-sdk checked out (SDK 0.2 not on PyPI yet)
+uv sync --extra dev                  # prismal-ai-sdk 0.3 resolves from PyPI
 # or: uv pip install -e ".[dev]"
 prismal-tui                          # launch the Textual app (or: python -m prismal_tui)
 uv run pytest                        # unit + ui (offline, fake SDK client + Textual Pilot)
-uv run pytest -m contract            # opt-in: ConversationSession against a running prismal-server
+uv run pytest -m contract            # opt-in: ConversationSession against a running prismal-server (0.3, fake-LLM + AG-UI for the resume tests)
 uv run ruff check . && uv run ruff format --check .
 uv run mypy prismal_tui
 ```
@@ -136,6 +141,8 @@ Local end-to-end: start a `prismal-server`
 - Want to add a config file for themes/keybindings? **Not in v0.1** — all
   configuration is `PRISMAL_TUI_*` env vars, matching every sibling
   front-end; a config file is `TUI-FUTURE-02`.
-- Want to publish to PyPI so people can `uvx prismal-tui`? **Not yet** —
-  v0.1 installs from source like `prismal-webchat` and `prismal-chatbot`;
-  publication is `TUI-FUTURE-01`.
+- Want to publish to PyPI? **Already have it** (since 0.2.0, `TUI-P-01`) —
+  bump the version and add a CHANGELOG entry in a PR; merging it to `main`
+  makes `release.yml` publish through PyPI trusted publishing (no token in
+  the repo), then tag `v<version>` and create the GitHub release. Never
+  upload by hand from a working tree.
