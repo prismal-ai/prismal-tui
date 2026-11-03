@@ -1,5 +1,5 @@
 # TUI-P-01 (DELTA-2026-11-host-0.3, was TUI-FUTURE-01) — publish `prismal-tui`
-# to PyPI from `main`, the same way prismal-sdk does (SPEC-CS3-REL-001).
+# to PyPI from `main`, like prismal-sdk (SPEC-CS3-REL-001).
 #
 # Every push to `main` (in practice: merging a release PR) runs this workflow.
 # It publishes the version in pyproject.toml when that version is a final
@@ -7,6 +7,14 @@
 # GitHub release with the wheel and sdist attached. Anything else (a `.devN`
 # version, a version already uploaded) ends green without publishing, so
 # re-runs are harmless.
+#
+# Privileges are split per job (security review, PR #1):
+#   plan            contents: read   — decide whether this version ships
+#   build           contents: read   — gates, build, smoke tests → artifact
+#   pypi-publish    id-token: write  — no checkout, no deps: upload artifact
+#   github-release  contents: write  — tag + GitHub release after the upload
+# Every job runs only on refs/heads/main, and the `pypi` environment only
+# accepts deployments from `main`.
 #
 # Publishing uses PyPI trusted publishing (OIDC): no token is stored in the
 # repository. PyPI must list this publisher once — project `prismal-tui`,
@@ -29,6 +37,7 @@ permissions:
 
 jobs:
   plan:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.decide.outputs.version }}
@@ -40,6 +49,8 @@ jobs:
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
       - name: Decide whether this version ships
         id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           version="$(uv version --short)"
@@ -55,27 +66,28 @@ jobs:
           if [ "$status" = "200" ]; then
             echo "::notice::prismal-tui ${version} is already on PyPI; nothing to publish"
             echo "publish=false" >> "$GITHUB_OUTPUT"
-          elif [ "$status" = "404" ]; then
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-          else
+            exit 0
+          elif [ "$status" != "404" ]; then
             echo "::error::PyPI answered ${status} for prismal-tui ${version}"
             exit 1
           fi
+          # PyPI uploads are immutable: a tag pointing elsewhere would describe
+          # a different artifact, and a version without a changelog entry
+          # ships without release notes.
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/v${version}" >/dev/null 2>&1; then
+            echo "::error::tag v${version} already exists but ${version} is not on PyPI"
+            exit 1
+          fi
+          grep -q "^## \[${version}\]" CHANGELOG.md \
+            || { echo "::error::CHANGELOG.md has no [${version}] entry"; exit 1; }
+          echo "publish=true" >> "$GITHUB_OUTPUT"
 
-  publish:
+  build:
     needs: plan
-    if: needs.plan.outputs.publish == 'true'
+    if: github.ref == 'refs/heads/main' && needs.plan.outputs.publish == 'true'
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/project/prismal-tui/${{ needs.plan.outputs.version }}/
-    permissions:
-      # OIDC token for PyPI trusted publishing.
-      id-token: write
-      # Create the `v<version>` tag and the GitHub release.
-      contents: write
     env:
-      VERSION: ${{ needs.plan.outputs.version }}
+      EXPECTED_VERSION: ${{ needs.plan.outputs.version }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -83,22 +95,6 @@ jobs:
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
         with:
           python-version: "3.13"
-
-      # PyPI uploads are immutable: a tag pointing elsewhere would describe a
-      # different artifact, and a version without a changelog entry ships
-      # without release notes.
-      - name: Check the release tag is free and the changelog has the version
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/v${VERSION}" >/dev/null 2>&1; then
-            echo "::error::tag v${VERSION} already exists but ${VERSION} is not on PyPI"
-            exit 1
-          fi
-          grep -q "^## \[${VERSION}\]" CHANGELOG.md \
-            || { echo "::error::CHANGELOG.md has no [${VERSION}] entry"; exit 1; }
-
       - name: Install
         run: uv sync --locked --extra dev
       - name: Ruff
@@ -107,37 +103,75 @@ jobs:
         run: uv run mypy prismal_tui
       - name: Pytest (unit + ui, offline) + coverage floor
         run: uv run pytest --cov --cov-report=term-missing
-
       - name: Build
         run: uv build
-
       # Catches what the suite cannot: files missing from the artifacts.
       - name: Smoke test (wheel)
-        env:
-          EXPECTED_VERSION: ${{ env.VERSION }}
         run: uv run --isolated --no-project --with dist/*.whl scripts/smoke_test.py
       - name: Smoke test (source distribution)
-        env:
-          EXPECTED_VERSION: ${{ env.VERSION }}
         run: uv run --isolated --no-project --with dist/*.tar.gz scripts/smoke_test.py
-
-      - name: Publish to PyPI (trusted publishing)
-        run: uv publish
-
-      - name: Tag and create the GitHub release
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Release notes (this version's CHANGELOG section)
         run: |
           set -euo pipefail
-          # Release notes = this version's CHANGELOG section.
-          awk -v v="$VERSION" '
+          awk -v v="$EXPECTED_VERSION" '
             $0 ~ "^## \\[" v "\\]" { on = 1; next }
             on && /^## \[/ { exit }
             on && /^\[[^]]+\]: / { next }
             on { print }
           ' CHANGELOG.md > release-notes.md
           echo "" >> release-notes.md
-          echo "PyPI: https://pypi.org/project/prismal-tui/${VERSION}/" >> release-notes.md
+          echo "PyPI: https://pypi.org/project/prismal-tui/${EXPECTED_VERSION}/" >> release-notes.md
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-notes
+          path: release-notes.md
+          if-no-files-found: error
+
+  pypi-publish:
+    needs: [plan, build]
+    if: github.ref == 'refs/heads/main' && needs.plan.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/prismal-tui/${{ needs.plan.outputs.version }}/
+    permissions:
+      id-token: write # OIDC token for PyPI trusted publishing — nothing else
+    steps:
+      # No checkout and no dependency install: only the built artifacts and
+      # uv itself ever run next to the OIDC token.
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: dist
+          path: dist/
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+      - name: Publish to PyPI (trusted publishing)
+        run: uv publish dist/*
+
+  github-release:
+    needs: [plan, pypi-publish]
+    if: github.ref == 'refs/heads/main' && needs.plan.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the `v<version>` tag and the GitHub release
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: dist
+          path: dist/
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-notes
+      - name: Tag and create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
           gh release create "v${VERSION}" dist/* \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \

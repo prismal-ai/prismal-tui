@@ -74,3 +74,31 @@ def test_contract_job_runs_the_published_host_0_3() -> None:
     assert "PRISMAL_SERVER_HOST_FAKE_LLM_MODE" in wf
     assert "PRISMAL_SERVER_HOST_AGUI_ENABLED" in wf
     assert "repository: prismal-ai/prismal-server" not in wf
+
+
+def _job(wf: str, name: str) -> str:
+    """The text of one top-level job in the workflow (until the next job)."""
+    start = wf.index(f"\n  {name}:\n")
+    nxt = re.search(r"\n  [a-z][a-z0-9-]*:\n", wf[start + 1 :])
+    return wf[start : start + 1 + nxt.start()] if nxt else wf[start:]
+
+
+def test_release_privileges_are_split_per_job() -> None:
+    # Security review on PR #1: the OIDC token never meets repo code, deps or
+    # tests; only main can publish.
+    wf = (ROOT / ".github/workflows/release.yml").read_text()
+    build, publish, release = (
+        _job(wf, "build"),
+        _job(wf, "pypi-publish"),
+        _job(wf, "github-release"),
+    )
+    assert "id-token" not in build and "contents: write" not in build
+    assert "uv build" in build and "pytest" in build
+    assert "id-token: write" in publish and "name: pypi" in publish
+    assert "contents: write" not in publish
+    assert "actions/checkout" not in publish and "uv sync" not in publish
+    assert "download-artifact" in publish and "uv publish" in publish
+    assert "contents: write" in release and "id-token" not in release
+    assert "needs: [plan, pypi-publish]" in release
+    for job in ("plan", "build", "pypi-publish", "github-release"):
+        assert "github.ref == 'refs/heads/main'" in _job(wf, job), job
