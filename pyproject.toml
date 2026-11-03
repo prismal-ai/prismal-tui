@@ -49,11 +49,18 @@ prismal-tui = "prismal_tui.__main__:main"
 
 [project.urls]
 Repository = "https://github.com/prismal-ai/prismal-tui"
+Changelog = "https://github.com/prismal-ai/prismal-tui/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/prismal-ai/prismal-tui/blob/main/docs/configuration.md"
 SDK = "https://github.com/prismal-ai/prismal-sdk"
 Server = "https://github.com/prismal-ai/prismal-server"
 
 [tool.hatch.build.targets.wheel]
 packages = ["prismal_tui"]
+
+# The sdist ships the package, tests, docs and changelog; repo-only files
+# (CI, agent guide, SDD specs, lockfile) stay out of PyPI.
+[tool.hatch.build.targets.sdist]
+exclude = [".github", "CLAUDE.md", "specs", "uv.lock", ".codegraph", "graphify-out"]
 
 # ── Tooling ────────────────────────────────────────────────────────────────
 

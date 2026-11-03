@@ -52,6 +52,17 @@ in-flight turn, a status-bar token/cost readout per turn and per session
 messages on failure. See `specs/tui-bootstrap/PLAN.md`
 §5 for the full in/out-of-scope list.
 
+## Install
+
+```bash
+uvx prismal-tui                 # run without installing
+# or: pipx install prismal-tui / uv tool install prismal-tui
+```
+
+Point it at your server with `PRISMAL_TUI_SERVER_URL` (and `PRISMAL_TUI_TOKEN`
+if it needs one); every setting is in
+[`docs/configuration.md`](./docs/configuration.md).
+
 ## Quickstart (dev)
 
 Requires Python 3.13, [`uv`](https://docs.astral.sh/uv/) and a running

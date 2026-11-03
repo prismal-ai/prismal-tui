@@ -15,9 +15,13 @@ Targets `prismal-server` 0.3 and `prismal-sdk` 0.3
   (the SDK's PyPI distribution name; the import module is still
   `prismal_sdk`). A `../prismal-sdk` checkout is no longer needed. This
   also fixes `uv sync`, which failed once the SDK renamed its project.
+- **Published on PyPI** as `prismal-tui`: `uvx prismal-tui` or
+  `pipx install prismal-tui` (`TUI-FUTURE-01`). Releases publish from `main`
+  through PyPI trusted publishing, then tag `v<version>` and create the
+  GitHub release. They no longer run on tag pushes.
 - CI's contract job installs `prismal-server` 0.3.x from PyPI into its own
   virtualenv, starts it in fake-LLM mode with AG-UI on, and runs on every
-  pull request. The release workflow no longer checks out the SDK.
+  pull request.
 
 ### Added
 

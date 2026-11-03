@@ -141,6 +141,8 @@ Local end-to-end: start a `prismal-server`
 - Want to add a config file for themes/keybindings? **Not in v0.1** — all
   configuration is `PRISMAL_TUI_*` env vars, matching every sibling
   front-end; a config file is `TUI-FUTURE-02`.
-- Want to publish to PyPI so people can `uvx prismal-tui`? **Not yet** —
-  v0.1 installs from source like `prismal-webchat` and `prismal-chatbot`;
-  publication is `TUI-FUTURE-01`.
+- Want to publish to PyPI? **Already have it** (since 0.2.0, `TUI-P-01`) —
+  bump the version and add a CHANGELOG entry in a PR; merging it to `main`
+  makes `release.yml` publish through PyPI trusted publishing (no token in
+  the repo), then tag `v<version>` and create the GitHub release. Never
+  upload by hand from a working tree.

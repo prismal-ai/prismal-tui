@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| **Status** | `DRAFT` |
+| **Status** | `IMPLEMENTED` — v0.1.0 / v0.1.1 tagged; 0.2.0 (SDK 0.3, AG-UI resume) committed 2026-11-03, PyPI publication in progress |
 | **Version** | 1.0 |
 | **Date** | 2026-07-19 |
 | **Companion** | [`PLAN.md`](./PLAN.md) · [`ARCHITECTURE.md`](./ARCHITECTURE.md) · [`SPEC.md`](./SPEC.md) |
@@ -111,11 +111,18 @@ Source: [`DELTA-2026-11-host-0.3.md`](./DELTA-2026-11-host-0.3.md).
 | TUI-I-06 | Contract tests vs host 0.3 fake mode (11/11 green on `prismal-server` 0.3.0 + `prismal-ai` 3.22.1, 2026-11-03) | 0.3 d | I-05, S-02 | INT-003, INT-005 | `DONE` |
 | TUI-I-07 | Docs, `0.2.0` CHANGELOG and version | 0.1 d | I-06 | INT-006 | `DONE` |
 
+## Phase P — PyPI publication (DELTA-2026-11-host-0.3, was TUI-FUTURE-01, 0.2.0)
+
+| ID | Task | Est. | Dep | SPEC | Status |
+|---|---|---|---|---|---|
+| TUI-P-01 | `release.yml` publishes from `main` via PyPI trusted publishing (skip versions already on PyPI, gates + smoke before upload, tag + GitHub release after); trimmed sdist; project URLs | 0.3 d | S-02 | REL-001 | `DONE` |
+| TUI-P-02 | Docs: README install, CLAUDE.md, CHANGELOG | 0.1 d | P-01 | REL-001 | `DONE` |
+
 ## Future (out of scope for v0.1, tracked only)
 
 | ID | Task | Trigger |
 |---|---|---|
-| TUI-FUTURE-01 | PyPI publication (`uvx prismal-tui` zero-install entrypoint) | The ecosystem's front-ends stabilize and a published package is worth maintaining |
+| ~~TUI-FUTURE-01~~ | PyPI publication — **delivered as TUI-P-01/02 in 0.2.0** (`DELTA-2026-11-host-0.3` Phase P) | Activated by the maintainer on 2026-11-03 |
 | TUI-FUTURE-02 | Local TOML config file (theme, keybinding overrides beyond `PRISMAL_TUI_CANCEL_KEY`) | Real demand for persisted, non-secret preferences beyond env vars |
 | TUI-FUTURE-03 | Multi-server / in-app server switching without restart | A user regularly needs to point the same running TUI at more than one `prismal-server` |
 | TUI-FUTURE-04 | File/media attachments to the multimodal layer | Host specs a media upload route (same trigger as `prismal-webchat` WCB-FUTURE-04 / `prismal-chatbot` CHB-FUTURE-04) |
@@ -172,3 +179,4 @@ All phases (0–4, D, E, S and I) are `DONE`; `v0.1.0` and `v0.1.1` are tagged, 
 | 1.7 | 2026-11-02 | Ernesto Crespo | TUI-04-06 done: version 0.1.0, CHANGELOG, release workflow (tag → gates → build → smoke → GitHub Release); `v0.1.0` tagged |
 | 1.8 | 2026-11-02 | Ernesto Crespo | `DELTA-2026-11-slash-escape` (TUI-E-01..02): `//text` sends `/text`; ships in 0.1.1 |
 | 1.9 | 2026-11-03 | Ernesto Crespo | `DELTA-2026-11-host-0.3` (TUI-S-01..04, TUI-I-01..07): SDK from PyPI as `prismal-ai-sdk` 0.3, host 0.3 contract job, opt-in AG-UI turns and `/resume`; ships in 0.2.0 |
+| 1.10 | 2026-11-03 | Ernesto Crespo | Phase P (TUI-P-01..02): PyPI publication from `main` via trusted publishing (was TUI-FUTURE-01) |

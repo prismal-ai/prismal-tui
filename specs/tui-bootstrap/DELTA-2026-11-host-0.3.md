@@ -42,6 +42,7 @@ Three upstream releases landed on 2026-11-02:
 | SPEC-TUI-INT-003 | WHEN the user runs `/resume [answer]` on a conversation with open interrupts and no turn in flight, THE SYSTEM SHALL call `run_agui(thread_id, resume=[i.resolve(payload) for i in open_interrupts])` (ids verbatim, every open interrupt answered, in host order), show the answer as the user line, and render the resumed run like any turn (tokens, tools, usage, cancel key, partial text kept). | `MUST` |
 | SPEC-TUI-INT-004 | IF `/resume` runs while no interrupt is open, THEN THE SYSTEM SHALL show "Nothing is waiting for an answer in this conversation." and make no network call. | `MUST` |
 | SPEC-TUI-INT-005 | THE SYSTEM SHALL never re-send a resume automatically (`SPEC-TUI-ERR-004`). It SHALL map `ResumeConflictError` `no_pending_interrupt` to "Nothing is waiting for an answer any more — it was already answered or the conversation moved on.", `resume_in_progress` to "That answer is still being processed — try again in a moment.", and a `ValidationError` with code `invalid_resume` or `unsupported_resume` to "The server didn't accept that answer." | `MUST` |
+| SPEC-TUI-REL-001 | (Activates TUI-FUTURE-01.) WHEN a final version that is not yet on PyPI reaches `main`, THE release workflow SHALL run the gates (ruff, mypy, offline tests with the coverage floor), build, smoke-test the wheel and sdist, publish `prismal-tui` through PyPI trusted publishing (OIDC, environment `pypi`, no stored token), and only then tag `v<version>` and create the GitHub release. It SHALL do nothing for a `.devN` version or one already on PyPI. | `MUST` |
 | SPEC-TUI-INT-006 | Open interrupts are lost on restart: the host has no route to list them. THE SYSTEM SHALL document this. A plain message sent while interrupts are open SHALL be sent as usual (what it does to the paused run is the engine's decision). | `MUST` |
 
 ## 4. Tasks
@@ -67,7 +68,14 @@ Three upstream releases landed on 2026-11-02:
 | TUI-I-06 | Contract tests vs host 0.3 fake mode (`/interrupt` → `/resume` → `resumed:`; retry → conflict) | 0.3 d | I-05, S-02 | INT-003, INT-005 | `DONE` |
 | TUI-I-07 | Docs + `0.2.0` CHANGELOG and version | 0.1 d | I-06 | INT-006 | `DONE` |
 
-Delta estimate: **~3.1 person-days**.
+### Phase P — PyPI publication (activates TUI-FUTURE-01)
+
+| ID | Task | Est. | Dep | SPEC | Status |
+|---|---|---|---|---|---|
+| TUI-P-01 | `release.yml` from `main` with trusted publishing; trimmed sdist; project URLs; release tests | 0.3 d | S-02 | REL-001 | `DONE` |
+| TUI-P-02 | README install section, CLAUDE.md, CHANGELOG | 0.1 d | P-01 | REL-001 | `DONE` |
+
+Delta estimate: **~3.5 person-days**.
 
 ## 5. Out of scope
 
@@ -86,3 +94,4 @@ Delta estimate: **~3.1 person-days**.
 | Version | Date | Author | Changes |
 |---|---|---|---|
 | 1.0 | 2026-11-03 | Ernesto Crespo | SDK 0.3 on PyPI, host 0.3 contract job, opt-in AG-UI turns and `/resume` |
+| 1.1 | 2026-11-03 | Ernesto Crespo | Phase P: PyPI publication (SPEC-TUI-REL-001, was TUI-FUTURE-01) |
