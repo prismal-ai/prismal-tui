@@ -163,3 +163,23 @@ def test_show_usage_reads_the_env(
 ) -> None:
     monkeypatch.setenv("PRISMAL_TUI_SHOW_USAGE", raw)
     assert PrismalTuiSettings().show_usage is value
+
+
+# ── TUI-I-01: PRISMAL_TUI_PROTOCOL (SPEC-TUI-AGU-001) ──────────────────────
+
+
+def test_protocol_defaults_to_native_prismal() -> None:
+    assert PrismalTuiSettings().protocol == "prismal"
+
+
+@pytest.mark.parametrize("raw", ["prismal", "ag-ui"])
+def test_protocol_reads_the_env(monkeypatch: pytest.MonkeyPatch, raw: str) -> None:
+    monkeypatch.setenv("PRISMAL_TUI_PROTOCOL", raw)
+    assert PrismalTuiSettings().protocol == raw
+
+
+def test_unknown_protocol_is_a_clear_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PRISMAL_TUI_PROTOCOL", "websocket")
+    with pytest.raises(ConfigurationError, match="PRISMAL_TUI_PROTOCOL") as info:
+        load_settings()
+    assert "websocket" not in str(info.value)  # never echo input values

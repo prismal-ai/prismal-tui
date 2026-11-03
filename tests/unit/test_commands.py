@@ -11,6 +11,7 @@ from prismal_tui.commands import (
     escaped_message,
     is_command,
     parse_command,
+    resume_payload,
 )
 
 
@@ -66,6 +67,7 @@ def test_registry_covers_the_spec_set_with_help_text() -> None:
         "rename",
         "delete",
         "usage",
+        "resume",
         "cancel",
         "quit",
         "help",
@@ -114,3 +116,52 @@ def test_double_slash_is_a_message_with_one_slash_removed(
 @pytest.mark.parametrize("text", ["hello", "/help", "a // b", " //x"])
 def test_other_input_is_not_escaped(text: str) -> None:
     assert escaped_message(text) is None
+
+
+# ── TUI-I-04: /resume (SPEC-TUI-UX-004, SES-004 as amended, INT-003) ───────
+
+
+@pytest.mark.parametrize(
+    ("text", "arg"),
+    [
+        ("/resume", None),
+        ('/resume {"action": "approve"}', '{"action": "approve"}'),
+        ("/RESUME yes please", "yes please"),
+    ],
+)
+def test_resume_parses_an_optional_answer(text: str, arg: str | None) -> None:
+    assert parse_command(text) == Command("resume", arg)
+
+
+@pytest.mark.parametrize(
+    ("arg", "payload"),
+    [
+        (None, None),
+        (
+            '{"action": "approve", "modifications": {}}',
+            {"action": "approve", "modifications": {}},
+        ),
+        ("true", True),
+        ("42", 42),
+        ('"quoted"', "quoted"),
+        ("null", None),
+        ("[1, 2]", [1, 2]),
+        ("yes, go ahead", "yes, go ahead"),
+        ("{not json", "{not json"),
+        ("approve", "approve"),
+    ],
+)
+def test_resume_payload_is_json_when_valid_else_the_exact_text(
+    arg: str | None, payload: object
+) -> None:
+    assert resume_payload(arg) == payload
+
+
+def test_resume_payload_never_maps_words_to_actions() -> None:
+    # No approve/reject shortcuts: the payload shape is the engine's.
+    assert resume_payload("approve") == "approve"
+    assert resume_payload("reject") == "reject"
+
+
+def test_resume_is_listed() -> None:
+    assert "resume" in {c.name for c in COMMANDS}

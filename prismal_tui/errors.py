@@ -18,8 +18,11 @@ from prismal_sdk import (
     PrismalAPIError,
     PrismalSDKError,
     PrismalTransportError,
+    ProtocolNotEnabledError,
+    ResumeConflictError,
     RuntimeCompositionError,
     TurnCancelledError,
+    ValidationError,
 )
 
 from prismal_tui.session.models import SessionCancelled, TurnInFlightError
@@ -37,6 +40,18 @@ UNEXPECTED = "Something went wrong — details are in the log file."
 # SPEC-TUI-USG-008: /usage failures.
 USAGE_UNSUPPORTED = "usage reporting requires prismal-server ≥ 0.2"
 USAGE_BAD_WINDOW = "The server rejected that usage time window."
+# DELTA-2026-11-host-0.3: AG-UI refusal (AGU-002) and resume errors (INT-005).
+AGUI_NOT_ENABLED = (
+    "AG-UI isn't enabled on this server — unset PRISMAL_TUI_PROTOCOL "
+    "or enable AG-UI on the host."
+)
+NOTHING_PENDING_ANYMORE = (
+    "Nothing is waiting for an answer any more — it was already answered "
+    "or the conversation moved on."
+)
+ANSWER_IN_PROGRESS = "That answer is still being processed — try again in a moment."
+ANSWER_NOT_ACCEPTED = "The server didn't accept that answer."
+_RESUME_REFUSED_CODES = frozenset({"invalid_resume", "unsupported_resume"})
 
 # Order matters: the first matching type wins (subclasses before bases).
 _BY_TYPE: tuple[tuple[type[BaseException], str], ...] = (
@@ -49,6 +64,7 @@ _BY_TYPE: tuple[tuple[type[BaseException], str], ...] = (
     (ForbiddenError, REQUEST_REFUSED),
     (RuntimeCompositionError, SERVER_NOT_READY),
     (TurnCancelledError, CANCELLED),
+    (ProtocolNotEnabledError, AGUI_NOT_ENABLED),
 )
 
 
@@ -57,6 +73,12 @@ def friendly_text(exc: BaseException) -> str:
     for exc_type, text in _BY_TYPE:
         if isinstance(exc, exc_type):
             return text
+    if isinstance(exc, ResumeConflictError):
+        if exc.code == "resume_in_progress":
+            return ANSWER_IN_PROGRESS
+        return NOTHING_PENDING_ANYMORE
+    if isinstance(exc, ValidationError) and exc.code in _RESUME_REFUSED_CODES:
+        return ANSWER_NOT_ACCEPTED
     if isinstance(exc, PrismalAPIError):
         if exc.code == "budget_exceeded":
             return BUDGET_REACHED

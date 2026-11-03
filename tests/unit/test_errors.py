@@ -17,16 +17,22 @@ from prismal_sdk import (
     PrismalConnectionError,
     PrismalSDKError,
     PrismalTimeoutError,
+    ProtocolNotEnabledError,
+    ResumeConflictError,
     RuntimeCompositionError,
     TurnCancelledError,
     ValidationError,
 )
 
 from prismal_tui.errors import (
+    AGUI_NOT_ENABLED,
+    ANSWER_IN_PROGRESS,
+    ANSWER_NOT_ACCEPTED,
     BUDGET_REACHED,
     CANCELLED,
     CREDENTIAL_REJECTED,
     GENERIC,
+    NOTHING_PENDING_ANYMORE,
     REQUEST_REFUSED,
     SERVER_NOT_READY,
     STILL_ANSWERING,
@@ -131,3 +137,44 @@ def test_usage_failure_mapping(exc: BaseException, expected: str) -> None:
 
 def test_usage_unsupported_copy() -> None:
     assert USAGE_UNSUPPORTED == "usage reporting requires prismal-server ≥ 0.2"
+
+
+# ── DELTA-2026-11-host-0.3: AG-UI refusal and resume errors ────────────────
+
+
+@pytest.mark.parametrize(
+    ("exc", "expected"),
+    [
+        (
+            _api(ProtocolNotEnabledError, 406, "protocol_not_enabled"),
+            AGUI_NOT_ENABLED,
+        ),
+        (
+            _api(ResumeConflictError, 409, "no_pending_interrupt"),
+            NOTHING_PENDING_ANYMORE,
+        ),
+        (_api(ResumeConflictError, 409, "resume_in_progress"), ANSWER_IN_PROGRESS),
+        (_api(ResumeConflictError, 409, "some_future_code"), NOTHING_PENDING_ANYMORE),
+        (_api(ValidationError, 422, "invalid_resume"), ANSWER_NOT_ACCEPTED),
+        (_api(ValidationError, 422, "unsupported_resume"), ANSWER_NOT_ACCEPTED),
+    ],
+)
+def test_resume_and_agui_mapping(exc: BaseException, expected: str) -> None:
+    text = friendly_text(exc)
+    assert text == expected
+    assert SERVER_MSG not in text and exc.code not in text  # type: ignore[attr-defined]
+
+
+def test_resume_copy_is_the_spec_copy() -> None:
+    assert AGUI_NOT_ENABLED == (
+        "AG-UI isn't enabled on this server — unset PRISMAL_TUI_PROTOCOL "
+        "or enable AG-UI on the host."
+    )
+    assert NOTHING_PENDING_ANYMORE == (
+        "Nothing is waiting for an answer any more — it was already answered "
+        "or the conversation moved on."
+    )
+    assert ANSWER_IN_PROGRESS == (
+        "That answer is still being processed — try again in a moment."
+    )
+    assert ANSWER_NOT_ACCEPTED == "The server didn't accept that answer."

@@ -1,7 +1,6 @@
 # TUI-04-06 — on a `v*` tag: gate, build, smoke-test and attach the wheel and
-# sdist to a GitHub Release. No PyPI upload: v0.1 installs from source
-# (TUI-FUTURE-01), and prismal-sdk 0.2 is not on PyPI yet, so it is checked
-# out next to this repo exactly as in ci.yml.
+# sdist to a GitHub Release. No PyPI upload: prismal-tui installs from source
+# (TUI-FUTURE-01). Its SDK dependency (`prismal-ai-sdk`) resolves from PyPI.
 name: Release
 
 on:
@@ -17,20 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # create the GitHub Release
-    defaults:
-      run:
-        working-directory: prismal-tui
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          path: prismal-tui
           persist-credentials: false
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          repository: prismal-ai/prismal-sdk
-          path: prismal-sdk
-          persist-credentials: false
-          token: ${{ secrets.PRISMAL_SDK_TOKEN || github.token }}
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
         with:
           python-version: "3.13"
@@ -67,13 +56,13 @@ jobs:
           EXPECTED_VERSION: ${{ github.ref_name }}
         run: |
           export EXPECTED_VERSION="${EXPECTED_VERSION#v}"
-          uv run --isolated --no-project --with dist/*.whl --with ../prismal-sdk scripts/smoke_test.py
+          uv run --isolated --no-project --with dist/*.whl scripts/smoke_test.py
       - name: Smoke test (source distribution)
         env:
           EXPECTED_VERSION: ${{ github.ref_name }}
         run: |
           export EXPECTED_VERSION="${EXPECTED_VERSION#v}"
-          uv run --isolated --no-project --with dist/*.tar.gz --with ../prismal-sdk scripts/smoke_test.py
+          uv run --isolated --no-project --with dist/*.tar.gz scripts/smoke_test.py
 
       - name: Create GitHub Release
         env:

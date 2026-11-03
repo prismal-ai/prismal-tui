@@ -1,8 +1,10 @@
-# TUI-00-06 — ruff + mypy + pytest (unit + ui, offline) on every push/PR;
-# opt-in `contract` job against a running prismal-server (manual dispatch).
+# TUI-00-06 / TUI-S-02 — ruff + mypy + pytest (unit + ui, offline) on every
+# push/PR, plus the contract job against prismal-server.
 #
-# prismal-sdk 0.2 is not on PyPI yet, so it is checked out next to this repo
-# to satisfy `[tool.uv.sources] prismal-sdk = { path = "../prismal-sdk" }`.
+# The SDK resolves from PyPI (`prismal-ai-sdk`, DELTA-2026-11-host-0.3): no
+# sibling checkout. The contract job installs the published prismal-server
+# 0.3.x wheel into its own venv and starts it in fake-LLM mode, so it needs no
+# provider credentials and no private repository access.
 name: CI
 
 on:
@@ -12,11 +14,15 @@ on:
   workflow_dispatch:
     inputs:
       run_contract:
-        description: "Run the opt-in contract suite"
+        description: "Run the contract suite"
         type: boolean
-        default: false
+        default: true
       contract_server_url:
-        description: "prismal-server URL (blank = start prismal-server in fake-LLM mode in the job)"
+        description: "prismal-server URL (blank = start prismal-server from PyPI in fake-LLM mode in the job)"
+        required: false
+        default: ""
+      server_version:
+        description: "prismal-server version from PyPI (blank = >=0.3,<0.4)"
         required: false
         default: ""
 
@@ -26,20 +32,10 @@ permissions:
 jobs:
   checks:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: prismal-tui
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          path: prismal-tui
           persist-credentials: false
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          repository: prismal-ai/prismal-sdk
-          path: prismal-sdk
-          persist-credentials: false
-          token: ${{ secrets.PRISMAL_SDK_TOKEN || github.token }}
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
         with:
           python-version: "3.13"
@@ -53,48 +49,62 @@ jobs:
         run: uv run pytest --cov --cov-report=term-missing
 
   contract:
-    if: github.event_name == 'workflow_dispatch' && inputs.run_contract
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'workflow_dispatch' && inputs.run_contract)
     needs: checks
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: prismal-tui
     env:
       CONTRACT_URL: ${{ inputs.contract_server_url || 'http://127.0.0.1:8765' }}
+      HOST_REQUIREMENT: ${{ inputs.server_version && format('prismal-server=={0}', inputs.server_version) || 'prismal-server>=0.3,<0.4' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          path: prismal-tui
           persist-credentials: false
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          repository: prismal-ai/prismal-sdk
-          path: prismal-sdk
-          persist-credentials: false
-          token: ${{ secrets.PRISMAL_SDK_TOKEN || github.token }}
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        if: inputs.contract_server_url == ''
-        with:
-          repository: prismal-ai/prismal-server
-          path: prismal-server
-          persist-credentials: false
-          token: ${{ secrets.PRISMAL_SERVER_TOKEN || github.token }}
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
         with:
           python-version: "3.13"
-      - name: Start prismal-server (fake-LLM mode)
+      # Its own venv: the host (and the engine it pulls in) must never leak
+      # into the TUI's environment (CLAUDE.md hard rule, SPEC-TUI-APP-002).
+      - name: Install prismal-server from PyPI
         if: inputs.contract_server_url == ''
-        working-directory: prismal-server
+        run: |
+          uv venv --python 3.13 "$RUNNER_TEMP/host"
+          uv pip install --python "$RUNNER_TEMP/host/bin/python" "$HOST_REQUIREMENT"
+          uv pip list --python "$RUNNER_TEMP/host/bin/python" | grep -i '^prismal'
+      - name: Start prismal-server (fake-LLM mode, AG-UI on)
+        if: inputs.contract_server_url == ''
         env:
           PRISMAL_SERVER_HOST_FAKE_LLM_MODE: "true"
+          PRISMAL_SERVER_HOST_ENVIRONMENT: development
+          PRISMAL_SERVER_HOST_AGUI_ENABLED: "true"
+          # Engine flag: without it the host refuses AG-UI with
+          # `protocol_not_enabled` even when HOST_AGUI_ENABLED is true.
+          PRISMAL_AGUI_EVENTS_ENABLED: "true"
         run: |
-          uv sync --locked
-          nohup uv run uvicorn prismal_server.app:app --host 127.0.0.1 --port 8765 > ../server.log 2>&1 &
-          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:8765/healthz && exit 0; sleep 1; done
-          cat ../server.log; exit 1
+          nohup "$RUNNER_TEMP/host/bin/uvicorn" prismal_server.app:app \
+            --host 127.0.0.1 --port 8765 > "$RUNNER_TEMP/host.log" 2>&1 &
+      # The suite skips when no host answers; here a skip would be a false
+      # green, so assert the fake-mode host is really up.
+      - name: Assert fake-LLM host is up
+        if: inputs.contract_server_url == ''
+        run: |
+          for _ in $(seq 1 60); do
+            if curl -fsS -D - -o /dev/null "$CONTRACT_URL/healthz" \
+                | grep -qi '^x-prismal-fake-llm: 1'; then
+              echo "fake-LLM host is up"; exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::prismal-server did not come up in fake-LLM mode"
+          cat "$RUNNER_TEMP/host.log"
+          exit 1
       - run: uv sync --locked --extra dev
       - name: Pytest (contract)
         env:
           PRISMAL_TUI_SERVER_URL: ${{ env.CONTRACT_URL }}
           PRISMAL_TUI_TOKEN: ${{ secrets.PRISMAL_TUI_CONTRACT_TOKEN }}
         run: uv run pytest -m contract -v
+      - name: Host log
+        if: always() && inputs.contract_server_url == ''
+        run: cat "$RUNNER_TEMP/host.log" || true

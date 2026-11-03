@@ -88,6 +88,29 @@ before the `v0.1.0` tag (TUI-04-06).
 | TUI-04-05 | `ruff` + `mypy` clean; coverage baseline recorded (97.0%, `fail_under = 97` ratchet in `pyproject.toml`) | 0.3 d | all | NFR-002 | `DONE` |
 | TUI-04-06 | Tag `v0.1.0`; release workflow | 0.2 d | 04-01..05, D-01..09 | — | `DONE` |
 
+## Phase S — SDK 0.3 on PyPI / host 0.3 alignment (DELTA-2026-11-host-0.3, 0.2.0)
+
+Source: [`DELTA-2026-11-host-0.3.md`](./DELTA-2026-11-host-0.3.md).
+
+| ID | Task | Est. | Dep | SPEC | Status |
+|---|---|---|---|---|---|
+| TUI-S-01 | Dependency → `prismal-ai-sdk>=0.3,<1` from PyPI, drop the path source, re-lock | 0.2 d | — | NFR-005 | `DONE` |
+| TUI-S-02 | CI/release without the SDK checkout; contract job on `prismal-server` 0.3 from PyPI | 0.3 d | S-01 | CI-001 | `DONE` |
+| TUI-S-03 | `errors.py`: AG-UI refusal and resume error copy | 0.2 d | S-01 | AGU-002, INT-005 | `DONE` |
+| TUI-S-04 | Docs (README, CLAUDE.md, `configuration.md`, CHANGELOG) | 0.2 d | S-01..03 | — | `DONE` |
+
+## Phase I — opt-in AG-UI turns and interrupt resume (DELTA-2026-11-host-0.3, 0.2.0)
+
+| ID | Task | Est. | Dep | SPEC | Status |
+|---|---|---|---|---|---|
+| TUI-I-01 | `PRISMAL_TUI_PROTOCOL` setting | 0.1 d | — | AGU-001 | `DONE` |
+| TUI-I-02 | Fake `run_agui` + AG-UI scripts | 0.2 d | S-01 | NFR-001 | `DONE` |
+| TUI-I-03 | Session: AG-UI translation, `TurnInterrupted`, open interrupts, `resume()` | 0.6 d | I-01, I-02 | SES-002, INT-001..003, INT-005 | `DONE` |
+| TUI-I-04 | `/resume` command, payload rule, app dispatch, interrupt notes, `/help` | 0.4 d | I-03 | UX-004, SES-004, INT-001, INT-003, INT-004 | `DONE` |
+| TUI-I-05 | Pilot UI tests | 0.4 d | I-04 | INT-001..005 | `DONE` |
+| TUI-I-06 | Contract tests vs host 0.3 fake mode (11/11 green on `prismal-server` 0.3.0 + `prismal-ai` 3.22.1, 2026-11-03) | 0.3 d | I-05, S-02 | INT-003, INT-005 | `DONE` |
+| TUI-I-07 | Docs, `0.2.0` CHANGELOG and version | 0.1 d | I-06 | INT-006 | `DONE` |
+
 ## Future (out of scope for v0.1, tracked only)
 
 | ID | Task | Trigger |
@@ -131,7 +154,7 @@ Phase 0 → 1 → 2 → 3 → 4 (scaffold before session core before UI before
 polish before hardening); within Phase 2, the transcript (TUI-02-02/03)
 and the composer/sidebar (TUI-02-04/05) can proceed in parallel once
 TUI-02-01 (app skeleton) is `DONE`, since neither depends on the other.
-All phases (0–4 and D) are `DONE`; `v0.1.0` is tagged.
+All phases (0–4, D, E, S and I) are `DONE`; `v0.1.0` and `v0.1.1` are tagged, `0.2.0` is ready to tag.
 
 ---
 
@@ -148,3 +171,4 @@ All phases (0–4 and D) are `DONE`; `v0.1.0` is tagged.
 | 1.6 | 2026-11-02 | Ernesto Crespo | Phase D (usage readout, `/usage`, budget copy; TUI-D-01..09) done; contract suite 8/8 vs host 0.2 fake mode |
 | 1.7 | 2026-11-02 | Ernesto Crespo | TUI-04-06 done: version 0.1.0, CHANGELOG, release workflow (tag → gates → build → smoke → GitHub Release); `v0.1.0` tagged |
 | 1.8 | 2026-11-02 | Ernesto Crespo | `DELTA-2026-11-slash-escape` (TUI-E-01..02): `//text` sends `/text`; ships in 0.1.1 |
+| 1.9 | 2026-11-03 | Ernesto Crespo | `DELTA-2026-11-host-0.3` (TUI-S-01..04, TUI-I-01..07): SDK from PyPI as `prismal-ai-sdk` 0.3, host 0.3 contract job, opt-in AG-UI turns and `/resume`; ships in 0.2.0 |

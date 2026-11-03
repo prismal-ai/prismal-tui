@@ -20,6 +20,8 @@ ENV_PREFIX = "PRISMAL_TUI_"
 APP_NAME = "prismal-tui"
 
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+#: Turn stream protocol (SPEC-TUI-AGU-001): native SSE or AG-UI (opt-in).
+Protocol = Literal["prismal", "ag-ui"]
 
 _MODIFIERS = frozenset({"ctrl", "shift", "alt", "meta", "super", "hyper"})
 
@@ -80,6 +82,7 @@ class PrismalTuiSettings(BaseSettings):
     cancel_key: str = "escape"
     log_level: LogLevel = "INFO"
     show_usage: bool = True  # status-bar usage readout (SPEC-TUI-USG-009)
+    protocol: Protocol = "prismal"  # AG-UI turns + /resume (SPEC-TUI-AGU-001)
 
     @field_validator("server_url")
     @classmethod

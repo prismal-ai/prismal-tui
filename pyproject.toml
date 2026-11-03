@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "prismal-tui"
-version = "0.1.1"
-description = "Terminal UI (Textual) for prismal-server, built exclusively on prismal-sdk."
+version = "0.2.0"
+description = "Terminal UI (Textual) for prismal-server, built exclusively on prismal-sdk (PyPI: prismal-ai-sdk)."
 readme = "README.md"
 requires-python = ">=3.13"
 license = { file = "LICENSE" }
@@ -20,15 +20,15 @@ classifiers = [
     "Typing :: Typed",
 ]
 
-# SPEC-TUI-NFR-005 (as modified by DELTA-2026-10): prismal-sdk>=0.2,<1 plus a
-# tested textual / platformdirs minor. The floor is written `0.2.0.dev0` so the
-# not-yet-released 0.2 line (installed from ../prismal-sdk) satisfies it; it is
-# still the 0.2 floor — test_dependencies.py fails on anything lower.
-# pydantic-settings is already a prismal-sdk dependency; it is declared here
+# SPEC-TUI-NFR-005 (as modified by DELTA-2026-11-host-0.3): the SDK is published
+# on PyPI as `prismal-ai-sdk` (import module `prismal_sdk`); 0.3 is the floor
+# (run_agui + interrupt resume), plus a tested textual / platformdirs minor.
+# test_dependencies.py fails on a lower floor or a sibling-checkout source.
+# pydantic-settings is already an SDK dependency; it is declared here
 # because PrismalTuiSettings imports it directly (never rely on transitive deps).
 # NEVER add prismal-ai / prismal-server / httpx here — see CLAUDE.md.
 dependencies = [
-    "prismal-sdk>=0.2.0.dev0,<1",
+    "prismal-ai-sdk>=0.3,<1",
     "textual>=8.2,<8.3",
     "platformdirs>=4.14,<4.15",
     "pydantic-settings>=2.5,<3",
@@ -51,10 +51,6 @@ prismal-tui = "prismal_tui.__main__:main"
 Repository = "https://github.com/prismal-ai/prismal-tui"
 SDK = "https://github.com/prismal-ai/prismal-sdk"
 Server = "https://github.com/prismal-ai/prismal-server"
-
-# prismal-sdk 0.2 is not on PyPI yet: resolve it from the sibling checkout.
-[tool.uv.sources]
-prismal-sdk = { path = "../prismal-sdk", editable = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["prismal_tui"]

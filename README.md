@@ -32,9 +32,9 @@ developer's terminal ── keyboard/ANSI ──▶ prismal-tui (this repo)
 
 | Repo | Role | Status |
 |---|---|---|
-| [`prismal`](https://github.com/prismal-ai/prismal) | Engine (LangGraph supervisor, 29 routes, RAG, security) | v3.10.1 — 21/21 specs |
-| [`prismal-server`](https://github.com/prismal-ai/prismal-server) | FastAPI host (REST + SSE + A2A) | v0.1 complete |
-| [`prismal-sdk`](https://github.com/prismal-ai/prismal-sdk) | Typed Python client (sync + async) | bootstrap complete |
+| [`prismal`](https://github.com/prismal-ai/prismal) | Engine (LangGraph supervisor, 29 routes, RAG, security) | v3.22.1 (PyPI `prismal-ai`) |
+| [`prismal-server`](https://github.com/prismal-ai/prismal-server) | FastAPI host (REST + SSE + AG-UI + A2A) | v0.3.0 (PyPI) |
+| [`prismal-sdk`](https://github.com/prismal-ai/prismal-sdk) | Typed Python client (sync + async) | v0.3.0 (PyPI `prismal-ai-sdk`) |
 | [`prismal-webchat`](https://github.com/prismal-ai/prismal-webchat) | Embeddable browser chat widget | SDD seed |
 | [`prismal-chatbot`](https://github.com/prismal-ai/prismal-chatbot) | External bots — Slack, Discord | SDD seed |
 | `prismal-tui` | Terminal UI (this repo) | **pre-release** |
@@ -54,10 +54,10 @@ messages on failure. See `specs/tui-bootstrap/PLAN.md`
 
 ## Quickstart (dev)
 
-Requires Python 3.13, [`uv`](https://docs.astral.sh/uv/), a checkout of
-[`prismal-sdk`](https://github.com/prismal-ai/prismal-sdk) next to this repo
-(`../prismal-sdk` — the SDK 0.2 line isn't on PyPI yet) and a running
-`prismal-server` (defaults to `http://localhost:8000`).
+Requires Python 3.13, [`uv`](https://docs.astral.sh/uv/) and a running
+`prismal-server` (defaults to `http://localhost:8000`). The SDK comes from
+PyPI as [`prismal-ai-sdk`](https://pypi.org/project/prismal-ai-sdk/)
+(import module `prismal_sdk`); no sibling checkout is needed.
 
 ```bash
 uv sync --extra dev
@@ -71,7 +71,10 @@ prismal-tui
 
 Inside the app: type a message and press Enter to send, `Esc` to cancel a
 streaming reply, `/new <name>` to start a new conversation, `/help` for the
-full key-binding and command list.
+full key-binding and command list. With `PRISMAL_TUI_PROTOCOL=ag-ui` (host
+with AG-UI enabled) the agent's approval questions show up in the transcript
+and `/resume <answer>` answers them — see
+[`docs/configuration.md`](./docs/configuration.md).
 
 ## Configuration
 

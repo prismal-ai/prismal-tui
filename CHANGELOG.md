@@ -4,6 +4,34 @@ All notable changes to `prismal-tui`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] — 2026-11-03
+
+Targets `prismal-server` 0.3 and `prismal-sdk` 0.3
+(`DELTA-2026-11-host-0.3`).
+
+### Changed
+
+- **The SDK now comes from PyPI.** The dependency is `prismal-ai-sdk>=0.3,<1`
+  (the SDK's PyPI distribution name; the import module is still
+  `prismal_sdk`). A `../prismal-sdk` checkout is no longer needed. This
+  also fixes `uv sync`, which failed once the SDK renamed its project.
+- CI's contract job installs `prismal-server` 0.3.x from PyPI into its own
+  virtualenv, starts it in fake-LLM mode with AG-UI on, and runs on every
+  pull request. The release workflow no longer checks out the SDK.
+
+### Added
+
+- **Agent questions and `/resume`.** With `PRISMAL_TUI_PROTOCOL=ag-ui`
+  (default `prismal`, unchanged), turns stream over AG-UI. When the agent
+  pauses at an approval gate, the transcript shows its question and
+  `/resume <answer>` answers it. Valid JSON is sent as the decoded value
+  (e.g. `/resume {"action": "approve"}`); anything else is sent as the
+  text. Answers are never mapped to actions or re-sent automatically. Open
+  questions stay in memory only.
+- Friendly copy for the new refusals: AG-UI disabled on the host, an answer
+  that was already consumed or is still running, and an answer the server
+  rejected.
+
 ## [0.1.1] — 2026-11-02
 
 ### Added
@@ -50,5 +78,6 @@ not on PyPI yet, so check out `../prismal-sdk` next to this repo. PyPI is
   responsiveness probe. An opt-in `contract` suite runs against a live
   `prismal-server` 0.2, which CI can start in fake-LLM mode.
 
+[0.2.0]: https://github.com/prismal-ai/prismal-tui/releases/tag/v0.2.0
 [0.1.1]: https://github.com/prismal-ai/prismal-tui/releases/tag/v0.1.1
 [0.1.0]: https://github.com/prismal-ai/prismal-tui/releases/tag/v0.1.0

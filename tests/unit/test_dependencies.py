@@ -1,6 +1,8 @@
-"""SPEC-TUI-NFR-005 (DELTA-2026-10): dependency pins are deliberate.
+"""SPEC-TUI-NFR-005 (DELTA-2026-11-host-0.3): dependency pins are deliberate.
 
-- ``prismal-sdk>=0.2,<1`` — a lower floor fails this test.
+- ``prismal-ai-sdk>=0.3,<1`` (the SDK's PyPI distribution name; the import
+  module is still ``prismal_sdk``) — a lower floor fails this test.
+- The SDK resolves from PyPI, never from a sibling checkout.
 - ``textual`` and ``platformdirs`` pinned to a tested minor (``>=X.Y,<X.Y+1``).
 - No engine/host/HTTP dependency is ever declared (SPEC-TUI-APP-002).
 """
@@ -22,16 +24,21 @@ def _runtime_requirements() -> dict[str, Requirement]:
     return {r.name.lower(): r for r in reqs}
 
 
-def test_sdk_floor_is_0_2_and_capped_below_1() -> None:
-    sdk = _runtime_requirements()["prismal-sdk"]
-    spec = sdk.specifier
-    # Every 0.1.x release must be rejected; the 0.2 line (incl. its dev
-    # pre-release while unpublished) and later 0.x must be accepted.
-    assert not spec.contains(Version("0.1.9"), prereleases=True)
-    assert spec.contains(Version("0.2.0.dev0"), prereleases=True)
-    assert spec.contains(Version("0.2.0"))
+def test_sdk_is_the_pypi_distribution_floor_0_3_capped_below_1() -> None:
+    reqs = _runtime_requirements()
+    assert "prismal-sdk" not in reqs, "the SDK is published as prismal-ai-sdk"
+    spec = reqs["prismal-ai-sdk"].specifier
+    # run_agui / interrupt resume arrived in 0.3.0 (the first PyPI release).
+    assert not spec.contains(Version("0.2.9"), prereleases=True)
+    assert spec.contains(Version("0.3.0"))
     assert spec.contains(Version("0.9.5"))
     assert not spec.contains(Version("1.0.0"))
+
+
+def test_sdk_resolves_from_pypi_not_a_sibling_checkout() -> None:
+    data = tomllib.loads(PYPROJECT.read_text())
+    sources = data.get("tool", {}).get("uv", {}).get("sources", {})
+    assert not {"prismal-sdk", "prismal-ai-sdk"} & set(sources), sources
 
 
 def _assert_tested_minor_pin(name: str) -> None:
